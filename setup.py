@@ -18,6 +18,10 @@ install_requires = [
     'opencv-python',
     'tqdm',
     'pytest',
+    'hydra-core',
+    'omegaconf',
+    'colorlog',
+    'pytorch-ignite @ git+https://github.com/pytorch/ignite@master',
 ]
 
 
