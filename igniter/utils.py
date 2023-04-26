@@ -22,3 +22,7 @@ def get_world_size(cfg: DictConfig) -> int:
 
 def is_distributed(cfg: DictConfig) -> bool:
     return get_world_size(cfg) > 0 and torch.cuda.device_count() > 1
+
+
+def check_str(string: str, msg: str = 'String is empty!'):
+    assert len(string) > 0, msg

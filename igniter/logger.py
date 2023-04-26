@@ -10,8 +10,6 @@ for handler in logger.handlers.copy():
         logger.removeHandler(handler)
 
 
-print(logger.handlers)
-
 formatter = colorlog.ColoredFormatter(
     '%(log_color)s%(asctime)s [%(filename)s:%(lineno)d] %(levelname)s: %(message)s%(reset)s',
     log_colors={'DEBUG': 'cyan', 'INFO': 'green', 'WARNING': 'yellow', 'ERROR': 'red', 'CRITICAL': 'bold_red'},
