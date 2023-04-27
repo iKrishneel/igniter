@@ -6,7 +6,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from torchvision.datasets import CocoDetection as _Dataset
+
+# from torchvision.datasets import CocoDetection as _Dataset
 
 import importlib
 import os
@@ -22,63 +23,6 @@ from segment_anything import sam_model_registry, SamPredictor as _SamPredictor
 from igniter.registry import model_registry, dataset_registry
 from igniter.utils import is_distributed
 from igniter.logger import logger
-
-
-@model_registry('sam')
-class SamPredictor(_SamPredictor):
-    def __init__(self, *args, **kwargs):
-        super(SamPredictor, self).__init__(*args, **kwargs)
-
-    @torch.no_grad()
-    def forward(self, batched_input: List[Dict[str, Any]]) -> torch.Tensor:
-        input_images = torch.stack([self.model.preprocess(x['image']) for x in batched_input], dim=0)
-        return self.model.image_encoder(input_images)
-
-    @classmethod
-    def build(cls, cfg):
-        checkpoint = cfg.models.sam.weights
-        assert osp.isfile(checkpoint), f'Weight file not found {checkpoint}!'
-        model_type = cfg.models.sam.name
-        sam = sam_model_registry[model_type](checkpoint=checkpoint)
-        return cls(**{'sam_model': sam.to(cfg.device)})
-
-    def children(self) -> Iterator['Module']:
-        for name, module in self.model.named_children():
-            yield module
-
-    def modules(self) -> Iterator['Module']:
-        for _, module in self.model.named_modules():
-            yield module
-
-    def buffers(self, *args, **kwargs):
-        return self.model.buffers(*args, **kwargs)
-
-    def parameters(self, *args, **kwargs):
-        return self.model.parameters(*args, **kwargs)
-
-    def named_modules(self, *args, **kwargs):
-        return self.model.named_modules(*args, **kwargs)
-
-    def named_buffers(self, *args, **kwargs):
-        return self.model.named_buffers(*args, **kwargs)
-
-    def state_dict(self, *args, **kwargs):
-        return self.model.state_dict(*args, **kwargs)
-
-
-@dataset_registry('coco')
-class Dataset(_Dataset):
-    def __init__(self, *args, **kwargs):
-        super(Dataset, self).__init__(*args, **kwargs)
-
-    def __getitem__(self, index: int) -> Tuple[Any, Any]:
-        id = self.ids[index]
-        image = self._load_image(id)
-        if self.transforms is not None:
-            image = self.transforms(image)
-
-        image = torch.from_numpy(np.asarray(image).transpose((2, 0, 1)))
-        return {'image': image, 'id': id}  # , 'original_size': image.shape[1:]}
 
 
 def build_transforms(cfg) -> Dict[str, Any]:
@@ -120,7 +64,7 @@ def build_model(cfg) -> nn.Module:
     cls_or_func = model_registry[cfg.build.model]
     try:
         return cls_or_func.build(cfg)
-    except:
+    except AttributeError:
         return cls_or_func(cfg)
 
 

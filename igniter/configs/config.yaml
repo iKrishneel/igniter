@@ -1,5 +1,5 @@
 driver: torch
-device: cuda
+device: "cuda"
 workdir: /tmp/dist/sam
 snapshot: 0
 epochs: 1
