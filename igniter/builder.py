@@ -7,8 +7,6 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
-# from torchvision.datasets import CocoDetection as _Dataset
-
 import importlib
 import os
 import os.path as osp
@@ -20,7 +18,7 @@ import ignite.distributed as idist
 
 from segment_anything import sam_model_registry, SamPredictor as _SamPredictor
 
-from igniter.registry import model_registry, dataset_registry
+from igniter.registry import model_registry, dataset_registry, io_registry
 from igniter.utils import is_distributed
 from igniter.logger import logger
 
@@ -85,14 +83,28 @@ def add_profiler(engine, cfg):
     return profiler
 
 
+def build_io(cfg):
+    engine = cfg.io.engine
+    cls = io_registry[engine]
+    if cls is None:
+        cls = importlib.import_module(engine)
+    try:
+        return cls.build(cfg)
+    except AttributeError:
+        return None
+
+
 class TrainerEngine(Engine):
-    def __init__(self, cfg, process_func, model, optimizer, dataloaders: Dict[str, DataLoader], **kwargs):
+    def __init__(
+        self, cfg, process_func, model, optimizer, dataloaders: Dict[str, DataLoader], io_ops=None, **kwargs
+    ) -> None:
         super(TrainerEngine, self).__init__(process_func, **kwargs)
 
         self._cfg = cfg
         self._model = model
         self._optimizer = optimizer
         self._train_dl, self._val = dataloaders['train'], dataloaders['val']
+        self._io_ops = io_ops
 
         self.checkpoint()
         self.add_progress_bar()
@@ -105,6 +117,7 @@ class TrainerEngine(Engine):
         optimizer = build_optim(cfg, model)
 
         dls = build_train_dataloader(cfg)
+        io_ops = build_io(cfg)
 
         if is_distributed(cfg):
             model = idist.auto_model(model)
@@ -124,9 +137,15 @@ class TrainerEngine(Engine):
             except AttributeError:
                 features = model.forward(inputs)
 
+            # import IPython, sys; IPython.embed(); sys.exit()
+
             for feature, data in zip(features, batch):
                 id = data['id']
-                torch.save(feature, osp.join(cfg.workdir, f"{str(int(id)).zfill(12)}.pt"))
+                fname = f'{str(int(id)).zfill(12)}'
+
+                engine._io_ops(features, fname)
+                # torch.save(feature, osp.join(cfg.workdir, f"{str(int(id)).zfill(12)}.pt"))
+
             """
             self._model.train()
             inputs, targets = batch
@@ -138,7 +157,7 @@ class TrainerEngine(Engine):
             return loss.item()
             """
 
-        return cls(cfg, update_model, model, optimizer, dataloaders=dls)
+        return cls(cfg, update_model, model, optimizer, dataloaders=dls, io_ops=io_ops)
 
     def __call__(self):
         super().run(self._train_dl, self._cfg.epochs, epoch_length=len(self._train_dl))

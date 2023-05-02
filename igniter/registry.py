@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-#!/usr/bin/env python
-
 from dataclasses import dataclass, field
 from typing import Dict, Union
 
@@ -28,7 +26,7 @@ class Registry(object):
         return _wrapper
 
     def __getitem__(self, name: str):
-        return self.__REGISTRY[name]
+        return self.__REGISTRY.get(name, None)
 
     def register(self, name_or_cls: Union[str, object] = None):
         return self(name_or_cls=name_or_cls)
@@ -46,3 +44,4 @@ class Registry(object):
 model_registry = Registry(name='Model Registry')
 dataset_registry = Registry(name='Dataset Registry')
 solver_registry = Registry(name='Solver Registry')
+io_registry = Registry(name='io Registry')

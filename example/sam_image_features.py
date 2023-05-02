@@ -2,6 +2,7 @@
 
 from typing import List, Dict, Any, Iterator, Tuple
 import os.path as osp
+import numpy as np
 import torch
 from torchvision.datasets import CocoDetection as _Dataset
 
@@ -9,7 +10,8 @@ import hydra
 from omegaconf import DictConfig
 
 from igniter.builder import trainer
-from igniter.registry import model_registry, dataset_registry
+from igniter.registry import model_registry, dataset_registry, io_registry
+from igniter.datasets.writer import S3IO
 
 from segment_anything import sam_model_registry, SamPredictor as _SamPredictor
 
@@ -21,9 +23,7 @@ class SamPredictor(_SamPredictor):
 
     @torch.no_grad()
     def forward(self, batched_input: List[Dict[str, Any]]) -> torch.Tensor:
-        input_images = torch.stack(
-            [self.model.preprocess(x['image']) for x in batched_input], dim=0
-        )
+        input_images = torch.stack([self.model.preprocess(x['image']) for x in batched_input], dim=0)
         return self.model.image_encoder(input_images)
 
     @classmethod

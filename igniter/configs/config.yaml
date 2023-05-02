@@ -24,7 +24,7 @@ transforms:
 
 datasets:
   dataloader:
-    batch_size: 3
+    batch_size: 2
     num_workers: 4
     shuffle: False
   coco:
@@ -44,6 +44,12 @@ solvers:
     lr: 0.001
     momentum: 0.9
 
+io:
+  engine: 's3_writer'
+  args:
+    bucket_name: 'sr-shokunin'
+    root: 'perception/sam/coco/val2017/features'
+  
 build:
   model: "sam"
   dataset: "coco"

@@ -3,6 +3,10 @@
 from typing import Any, Dict, List, Type
 from dataclasses import dataclass, field
 
+import threading
+from io import BytesIO
+import concurrent.futures as cf
+
 import numpy as np
 import cv2 as cv
 import json
@@ -45,6 +49,19 @@ class S3Client(object):
             raise TypeError(f'Unknown file type {content_type}')
         return val
 
+    def write(self, buffer: BytesIO, path: str, same_thread: bool = True) -> None:
+        if same_thread:
+            self._write(buffer, path)
+        else:
+            thread = threading.Thread(target=self._write, args=(buffer, path))
+            thread.start()
+
+    def _write(self, buffer: BytesIO, path: str):
+        assert isinstance(buffer, BytesIO), f'Except type {type(ByteIO)} but got {type(buffer)}'
+        assert len(path), 'Invalid path: {path}'
+        response = self.client.put_object(Bucket=self.bucket_name, Key=path, Body=buffer.getvalue())
+        return response
+
     def _read(self, s3_file):
         return s3_file['Body'].read()
 
@@ -70,10 +87,18 @@ if __name__ == '__main__':
     parser.add_argument('--root', type=str, default='perception/datasets/coco/')
     args = parser.parse_args()
 
-    s3 = S3Client(bucket_name=args.bucket_name)
+    s3 = S3Client(bucket_name=args.bucket)
 
-    im = s3[args.root + 'train2017/000000005180.jpg']
-    js = s3['instances_val2017.json']
+    # im = s3[args.root + 'train2017/000000005180.jpg']
+    # js = s3['instances_val2017.json']
+
+    from torchvision.models import resnet18
+    import torch
+
+    buffer = BytesIO()
+
+    m = resnet18()
+    torch.save(m.state_dict(), buffer)
 
     import IPython
 
