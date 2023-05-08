@@ -16,9 +16,7 @@ from ignite.handlers import Checkpoint, BasicTimeProfiler
 from ignite.contrib.handlers import ProgressBar
 import ignite.distributed as idist
 
-from segment_anything import sam_model_registry, SamPredictor as _SamPredictor
-
-from igniter.registry import model_registry, dataset_registry, io_registry
+from igniter.registry import model_registry, dataset_registry, io_registry, proc_registry
 from igniter.utils import is_distributed
 from igniter.logger import logger
 
@@ -94,11 +92,26 @@ def build_io(cfg):
         return None
 
 
+def build_func(cfg):
+    return proc_registry.get(cfg.build.func)
+
+
 class TrainerEngine(Engine):
     def __init__(
         self, cfg, process_func, model, optimizer, dataloaders: Dict[str, DataLoader], io_ops=None, **kwargs
     ) -> None:
         super(TrainerEngine, self).__init__(process_func, **kwargs)
+
+        # TODO: Move this to each builder function
+        if is_distributed(cfg):
+            model = idist.auto_model(model)
+            optimizer = idist.auto_optim(optimizer)
+            for key in dataloaders:
+                if dataloaders[key] is None:
+                    continue
+                dataloaders[key] = idist.auto_dataloader(
+                    dataloaders[key].dataset_registry, collate_fn=collate_fn, **dict(cfg.datasets.dataloader)
+                )
 
         self._cfg = cfg
         self._model = model
@@ -112,51 +125,11 @@ class TrainerEngine(Engine):
     @classmethod
     def build(cls, cfg) -> 'TrainerEngine':
         os.makedirs(cfg.workdir, exist_ok=True)
-
         model = build_model(cfg)
         optimizer = build_optim(cfg, model)
-
         dls = build_train_dataloader(cfg)
         io_ops = build_io(cfg)
-
-        if is_distributed(cfg):
-            model = idist.auto_model(model)
-            optimizer = idist.auto_optim(optimizer)
-            for key in dls:
-                if dls[key] is None:
-                    continue
-                dls[key] = idist.auto_dataloader(
-                    dls[key].dataset_registry, collate_fn=collate_fn, **dict(cfg.datasets.dataloader)
-                )
-
-        def update_model(engine, batch):
-            inputs = [{'image': data['image'].to(cfg.device)} for data in batch]
-
-            try:
-                features = model.module.forward(inputs)
-            except AttributeError:
-                features = model.forward(inputs)
-
-            # import IPython, sys; IPython.embed(); sys.exit()
-
-            for feature, data in zip(features, batch):
-                id = data['id']
-                fname = f'{str(int(id)).zfill(12)}'
-
-                engine._io_ops(features, fname)
-                # torch.save(feature, osp.join(cfg.workdir, f"{str(int(id)).zfill(12)}.pt"))
-
-            """
-            self._model.train()
-            inputs, targets = batch
-            self._optimizer.zero_grad()
-            loss = model(inputs)
-            # loss = criterion(logits, outputs)
-            loss.backward()
-            self._optimizer.step()
-            return loss.item()
-            """
-
+        update_model = build_func(cfg)
         return cls(cfg, update_model, model, optimizer, dataloaders=dls, io_ops=io_ops)
 
     def __call__(self):

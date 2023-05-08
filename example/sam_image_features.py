@@ -10,7 +10,7 @@ import hydra
 from omegaconf import DictConfig
 
 from igniter.builder import trainer
-from igniter.registry import model_registry, dataset_registry, io_registry
+from igniter.registry import model_registry, dataset_registry, io_registry, proc_registry
 from igniter.datasets.writer import S3IO
 
 from segment_anything import sam_model_registry, SamPredictor as _SamPredictor
@@ -73,6 +73,22 @@ class Dataset(_Dataset):
 
         image = torch.from_numpy(np.asarray(image).transpose((2, 0, 1)))
         return {'image': image, 'id': id}  # , 'original_size': image.shape[1:]}
+
+
+@proc_registry('sam_image_feature_saver')
+def sam_forward(engine, batch):
+    cfg = engine._cfg
+    inputs = [{'image': data['image'].to(cfg.device)} for data in batch]
+    try:
+        features = engine._model.module.forward(inputs)
+    except AttributeError:
+        features = engine._model.forward(inputs)
+
+    for feature, data in zip(features, batch):
+        id = data['id']
+        fname = f'{str(int(id)).zfill(12)}'
+
+        engine._io_ops(features, fname)
 
 
 @hydra.main(version_base=None, config_path='./configs', config_name='config')

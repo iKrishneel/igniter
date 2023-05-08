@@ -44,4 +44,5 @@ class Registry(object):
 model_registry = Registry(name='Model Registry')
 dataset_registry = Registry(name='Dataset Registry')
 solver_registry = Registry(name='Solver Registry')
-io_registry = Registry(name='io Registry')
+io_registry = Registry(name='IO Registry')
+proc_registry = Registry(name='Proc Registry')

@@ -24,7 +24,7 @@ transforms:
 
 datasets:
   dataloader:
-    batch_size: 2
+    batch_size: 1
     num_workers: 4
     shuffle: False
   coco:
@@ -54,3 +54,4 @@ build:
   model: "sam"
   dataset: "coco"
   solver: "SGD"
+  func: "sam_image_feature_saver"
