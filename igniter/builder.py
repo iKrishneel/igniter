@@ -1,15 +1,12 @@
 #!/usr/bin/env pythono
 
-from typing import List, Dict, Any, Tuple, Iterator
-import numpy as np
+from typing import List, Dict, Any
 
-import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
 import importlib
 import os
-import os.path as osp
 
 from ignite.engine import Engine, Events
 from ignite.handlers import Checkpoint, BasicTimeProfiler
@@ -93,7 +90,12 @@ def build_io(cfg):
 
 
 def build_func(cfg):
-    return proc_registry.get(cfg.build.func)
+    func = proc_registry[cfg.build.func]
+    if func is None:
+        logger.info('Using default training function')
+        func = proc_registry['default']
+    assert func, f'Training forward function is not defined'
+    return func
 
 
 class TrainerEngine(Engine):
@@ -133,7 +135,7 @@ class TrainerEngine(Engine):
         return cls(cfg, update_model, model, optimizer, dataloaders=dls, io_ops=io_ops)
 
     def __call__(self):
-        super().run(self._train_dl, self._cfg.epochs, epoch_length=len(self._train_dl))
+        self.run(self._train_dl, self._cfg.epochs, epoch_length=len(self._train_dl))
 
     def checkpoint(self):
         if self._cfg.snapshot == 0:
@@ -151,11 +153,12 @@ def build_trainer(cfg):
     return TrainerEngine.build(cfg)
 
 
-def trainer(cfg):
-    def _trainer(rank, cfg):
-        trainer = build_trainer(cfg)
-        trainer()
+def _trainer(rank, cfg):
+    trainer = build_trainer(cfg)
+    trainer()
 
+
+def trainer(cfg):
     if is_distributed(cfg):
         init_args = dict(cfg.distributed[cfg.distributed.type])
         with idist.Parallel(backend=cfg.distributed.backend, **init_args) as parallel:
