@@ -59,6 +59,9 @@ class SamPredictor(_SamPredictor):
     def state_dict(self, *args, **kwargs):
         return self.model.state_dict(*args, **kwargs)
 
+    def named_parameters(self, *args, **kwargs):
+        return self.model.named_parameters(*args, **kwargs)
+
 
 @dataset_registry('coco')
 class Dataset(_Dataset):
@@ -88,7 +91,7 @@ def sam_forward(engine, batch):
         id = data['id']
         fname = f'{str(int(id)).zfill(12)}'
 
-        engine._io_ops(features, fname)
+        # engine._io_ops(features, fname)
 
 
 @hydra.main(version_base=None, config_path='./configs', config_name='config')

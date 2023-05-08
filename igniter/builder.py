@@ -112,7 +112,7 @@ class TrainerEngine(Engine):
                 if dataloaders[key] is None:
                     continue
                 dataloaders[key] = idist.auto_dataloader(
-                    dataloaders[key].dataset_registry, collate_fn=collate_fn, **dict(cfg.datasets.dataloader)
+                    dataloaders[key].dataset, collate_fn=collate_fn, **dict(cfg.datasets.dataloader)
                 )
 
         self._cfg = cfg
@@ -161,7 +161,9 @@ def _trainer(rank, cfg):
 def trainer(cfg):
     if is_distributed(cfg):
         init_args = dict(cfg.distributed[cfg.distributed.type])
-        with idist.Parallel(backend=cfg.distributed.backend, **init_args) as parallel:
+        with idist.Parallel(
+            backend=cfg.distributed.backend, nproc_per_node=cfg.distributed.nproc_per_node, **init_args
+        ) as parallel:
             parallel.run(_trainer, cfg)
     else:
         _trainer(None, cfg)

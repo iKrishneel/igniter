@@ -13,15 +13,16 @@ class Node(Enum):
 
 
 def get_world_size(cfg: DictConfig) -> int:
+    nproc = cfg.distributed.nproc_per_node
     if cfg.distributed.type == Node.SINGLE.value:
-        world_size = cfg.distributed.single.nproc_per_node
+        world_size = nproc
     else:
-        world_size = cfg.distributed.dist_config.nproc_per_node * cfg.distributed.dist_config.nnodes
+        world_size = nproc * cfg.distributed.dist_config.nnodes
     return world_size
 
 
 def is_distributed(cfg: DictConfig) -> bool:
-    return get_world_size(cfg) > 0 and torch.cuda.device_count() > 1
+    return get_world_size(cfg) > 0 and torch.cuda.device_count() > 1 and cfg.distributed.nproc_per_node > 1
 
 
 def check_str(string: str, msg: str = 'String is empty!'):

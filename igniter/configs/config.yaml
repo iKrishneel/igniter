@@ -7,9 +7,9 @@ epochs: 1
 distributed:
   backend: nccl
   type: single  # single or multiple
+  nproc_per_node: 4
   single:
     init_method: tcp://127.0.0.1:23456
-    nproc_per_node: 1
 
 transforms:
   train:
@@ -24,7 +24,7 @@ transforms:
 
 datasets:
   dataloader:
-    batch_size: 1
+    batch_size: 2
     num_workers: 4
     shuffle: False
   coco:
