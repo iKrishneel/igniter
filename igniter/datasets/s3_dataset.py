@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from typing import Tuple
+from typing import Tuple, Optional, Callable
 import os.path as osp
 import numpy as np
 from torch.utils.data import Dataset
@@ -29,8 +29,11 @@ class S3Dataset(Dataset):
 
 
 class S3CocoDataset(S3Dataset):
-    def __init__(self, bucket_name: str, root: str, anno_fn: str, **kwargs) -> None:
+    def __init__(
+        self, bucket_name: str, root: str, anno_fn: str, transforms: Optional[Callable] = None, **kwargs
+    ) -> None:
         check_str(anno_fn)
+        assert anno_fn.split('.')[1] == 'json', f'Expects json file but got {anno_fn}'
         super(S3CocoDataset, self).__init__(bucket_name, **kwargs)
 
         self.root = root

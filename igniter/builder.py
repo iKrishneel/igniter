@@ -47,7 +47,8 @@ def build_train_dataloader(cfg) -> Dict[str, DataLoader]:
             logger.info(f'Building {key} dataloader')
             dataset = cls(**{**dict(attrs[name][key]), 'transforms': transforms.get(key, None)})
             dataloaders[key] = DataLoader(dataset, collate_fn=collate_fn, **dict(cfg.datasets.dataloader))
-        except TypeError:
+        except TypeError as e:
+            logger.warning(e)
             dataloaders[key] = None
     return dataloaders
 
@@ -57,7 +58,8 @@ def build_model(cfg) -> nn.Module:
     cls_or_func = model_registry[cfg.build.model]
     try:
         return cls_or_func.build(cfg)
-    except AttributeError:
+    except AttributeError as e:
+        logger.debug(e)
         return cls_or_func(cfg)
 
 
@@ -79,7 +81,10 @@ def add_profiler(engine, cfg):
 
 
 def build_io(cfg):
-    engine = cfg.io.engine
+    try:
+        engine = cfg.io.engine
+    except AttributeError:
+        return None
     cls = io_registry[engine]
     if cls is None:
         cls = importlib.import_module(engine)
@@ -129,9 +134,9 @@ class TrainerEngine(Engine):
         os.makedirs(cfg.workdir, exist_ok=True)
         model = build_model(cfg)
         optimizer = build_optim(cfg, model)
-        dls = build_train_dataloader(cfg)
         io_ops = build_io(cfg)
         update_model = build_func(cfg)
+        dls = build_train_dataloader(cfg)
         return cls(cfg, update_model, model, optimizer, dataloaders=dls, io_ops=io_ops)
 
     def __call__(self):

@@ -10,7 +10,7 @@ def default_forward(engine, batch) -> Dict[str, torch.Tensor]:
     engine._model.train()
     inputs, targets = batch
     engine._optimizer.zero_grad()
-    loss = model(inputs)
+    loss = engine._model(inputs)
     loss.backward()
     engine._optimizer.step()
     return loss.item()

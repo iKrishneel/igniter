@@ -28,6 +28,12 @@ class S3Client(object):
         logger.info(f'Data source is s3://{self.bucket_name}')
         self._s3 = boto3.client('s3')
 
+    def get(self, filename: str, ret_raw: bool = True):
+        s3_file = self.client.get_object(Bucket=self.bucket_name, Key=filename)
+        if ret_raw:
+            return s3_file
+        return self._read(s3_file)
+
     def __call__(self, filename: str) -> Type[Any]:
         return self.load_file(filename)
 
@@ -36,8 +42,7 @@ class S3Client(object):
 
     def load_file(self, filename: str):
         assert len(filename) > 0, f'Invalid filename'
-        s3_file = self.client.get_object(Bucket=self.bucket_name, Key=filename)
-        return self.decode_file(s3_file)
+        return self.decode_file(self.get(filename))
 
     def decode_file(self, s3_file) -> Type[Any]:
         content_type = s3_file['ResponseMetadata']['HTTPHeaders']['content-type']
