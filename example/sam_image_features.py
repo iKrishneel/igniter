@@ -6,12 +6,8 @@ import numpy as np
 import torch
 from torchvision.datasets import CocoDetection as _Dataset
 
-import hydra
-from omegaconf import DictConfig
-
-from igniter.builder import trainer
 from igniter.registry import model_registry, dataset_registry, io_registry, proc_registry
-from igniter.io import S3IO
+from igniter import initiate
 
 from segment_anything import sam_model_registry, SamPredictor as _SamPredictor
 from segment_anything.modeling import Sam
@@ -94,10 +90,4 @@ def sam_forward(engine, batch):
         engine._io_ops(feature, fname)
 
 
-@hydra.main(version_base=None, config_path='./configs', config_name='sam_image_features')
-def main(cfg: DictConfig):
-    trainer(cfg)
-
-
-if __name__ == '__main__':
-    main()
+initiate('./configs/sam_image_features.yaml')

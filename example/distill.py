@@ -13,6 +13,7 @@ import numpy as np
 import hydra
 from timm.models import swin_tiny_patch4_window7_224
 
+from igniter import initiate
 from igniter.builder import trainer
 from igniter.datasets import S3CocoDataset
 from igniter.registry import model_registry, proc_registry, dataset_registry
@@ -110,10 +111,4 @@ def update_model(engine, batch):
     return losses.item()
 
 
-@hydra.main(version_base=None, config_path='./configs/', config_name='swin')
-def main(cfg):
-    trainer(cfg)
-
-
-if __name__ == '__main__':
-    main()
+initiate('./configs/swin.yaml')
