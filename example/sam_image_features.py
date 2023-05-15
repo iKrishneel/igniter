@@ -11,7 +11,7 @@ from omegaconf import DictConfig
 
 from igniter.builder import trainer
 from igniter.registry import model_registry, dataset_registry, io_registry, proc_registry
-from igniter.datasets.writer import S3IO
+from igniter.io import S3IO
 
 from segment_anything import sam_model_registry, SamPredictor as _SamPredictor
 from segment_anything.modeling import Sam
@@ -91,13 +91,10 @@ def sam_forward(engine, batch):
     for feature, data in zip(features, batch):
         id = data['id']
         fname = f'{str(int(id)).zfill(12)}'
-
-        # import IPython, sys; IPython.embed(header='>>>>'); sys.exit()
-
-        engine._io_ops(features, fname)
+        engine._io_ops(feature, fname)
 
 
-@hydra.main(version_base=None, config_path='./configs', config_name='config')
+@hydra.main(version_base=None, config_path='./configs', config_name='sam_image_features')
 def main(cfg: DictConfig):
     trainer(cfg)
 
