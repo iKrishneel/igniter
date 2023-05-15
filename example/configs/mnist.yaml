@@ -1,0 +1,61 @@
+driver: torch
+device: "cuda"
+workdir: &workdir /tmp/dist/mnist
+snapshot: 10000
+epochs: 100
+
+distributed:
+  backend: nccl
+  type: single  # single or multiple
+  nproc_per_node: 1
+  single:
+    init_method: tcp://127.0.0.1:23456
+
+transforms:
+  train: &trans
+    engine: "torchvision.transforms"
+    augs:
+      ToTensor:
+      Normalize:
+        mean: [0.1307]
+        std: [0.3081]
+  val:
+    <<: *trans
+
+datasets:
+  dataloader:
+    batch_size: 128
+    num_workers: 4
+    shuffle: True
+    pin_memory: True
+    collate_fn: 'mnist_collate_fn'
+  mnist:
+    val:
+      root: '/root/krishneel/Downloads/'
+      train: False
+      download: True
+    train:
+      root: '/root/krishneel/Downloads/'
+      train: True
+      download: True
+
+models:
+  mnist:
+    name: "mnist"
+    pretrained: False
+
+solvers:
+  engine: "torch.optim"
+  Adadelta:
+    lr: 0.001
+
+io:
+  engine: 'summary_writer'
+  args:
+    log_dir: *workdir
+  
+build:
+  model: "mnist"
+  dataset: "mnist"
+  solver: "Adadelta"
+  func: "default"

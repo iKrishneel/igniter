@@ -6,5 +6,5 @@ from ..registry import io_registry
 
 
 @io_registry('summary_writer')
-def summary_writer(*args, **kwargs) -> SummaryWriter:
-    return SummaryWriter(*args, **kwargs)
+def summary_writer(cfg) -> SummaryWriter:
+    return SummaryWriter(**dict(cfg.io.args))

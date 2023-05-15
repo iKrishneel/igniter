@@ -30,26 +30,33 @@ def build_transforms(cfg) -> Dict[str, Any]:
     return transforms
 
 
-def collate_fn(data):
-    return data
-
-
 def build_train_dataloader(cfg) -> Dict[str, DataLoader]:
     name = cfg.build.dataset
     cls = dataset_registry[name]
     attrs = cfg.datasets
     transforms = build_transforms(cfg)
     dataloaders = {}
+
+    try:
+        collate_fn = attrs.dataloader.collate_fn
+    except AttributeError:
+        collate_fn = 'collate_fn'
+
+    collate_fn = proc_registry.get(collate_fn)
+
     for key in attrs[name]:
         if key not in attrs[name]:
             continue
         try:
             logger.info(f'Building {key} dataloader')
             dataset = cls(**{**dict(attrs[name][key]), 'transforms': transforms.get(key, None)})
-            dataloaders[key] = DataLoader(dataset, collate_fn=collate_fn, **dict(cfg.datasets.dataloader))
+            kwargs = dict(attrs.dataloader)
+            kwargs.pop('collate_fn')
+            dataloaders[key] = DataLoader(dataset, collate_fn=collate_fn, **kwargs)
         except TypeError as e:
             logger.warning(e)
             dataloaders[key] = None
+
     return dataloaders
 
 
@@ -90,8 +97,8 @@ def build_io(cfg):
         cls = importlib.import_module(engine)
     try:
         return cls.build(cfg)
-    except AttributeError:
-        return None
+    except AttributeError as e:
+        return cls(cfg)
 
 
 def build_func(cfg):
