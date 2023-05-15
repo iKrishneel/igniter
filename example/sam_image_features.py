@@ -8,6 +8,7 @@ from torchvision.datasets import CocoDetection as _Dataset
 
 from igniter.registry import model_registry, dataset_registry, io_registry, proc_registry
 from igniter import initiate
+from igniter.io import S3IO
 
 from segment_anything import sam_model_registry, SamPredictor as _SamPredictor
 from segment_anything.modeling import Sam

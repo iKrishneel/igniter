@@ -97,14 +97,19 @@ def update_model(engine, batch):
     engine._model.train()
     image, target = batch
 
-    import IPython, sys
+    # import IPython, sys
 
-    IPython.embed()
-    sys.exit()
+    # IPython.embed()
+    # sys.exit()
 
     engine._optimizer.zero_grad()
 
     losses = engine._model(image, target)
+
+    iteration = engine.state.iteration
+    writer = engine._io_ops
+    for key in losses:
+        writer.add_scalar(f'Loss/{key}', losses[key], iteration)
 
     losses.backward()
     engine._optimizer.step()

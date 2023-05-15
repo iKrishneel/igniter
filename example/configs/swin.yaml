@@ -1,6 +1,6 @@
 driver: torch
 device: "cuda"
-workdir: /tmp/dist/sam
+workdir: &workdir /tmp/dist/sam
 snapshot: 5000
 epochs: 100
 
@@ -50,11 +50,10 @@ solvers:
     lr: 0.001
     momentum: 0.9
 
-# io:
-#   engine: 's3_writer'
-#   args:
-#     bucket_name: 'sr-shokunin'
-#     root: 'perception/sam/coco/val2017/features'
+io:
+  engine: 'summary_writer'
+  args:
+    log_dir: *workdir
   
 build:
   model: "swin"
