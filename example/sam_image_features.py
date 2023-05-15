@@ -14,6 +14,7 @@ from igniter.registry import model_registry, dataset_registry, io_registry, proc
 from igniter.datasets.writer import S3IO
 
 from segment_anything import sam_model_registry, SamPredictor as _SamPredictor
+from segment_anything.modeling import Sam
 
 
 @model_registry('sam')
@@ -27,7 +28,7 @@ class SamPredictor(_SamPredictor):
         return self.model.image_encoder(input_images)
 
     @classmethod
-    def build(cls, cfg) -> 'Sam':
+    def build(cls, cfg) -> Sam:
         name = cfg.build.model
         checkpoint = cfg.models[name].weights
         assert osp.isfile(checkpoint), f'Weight file not found {checkpoint}!'
@@ -91,7 +92,9 @@ def sam_forward(engine, batch):
         id = data['id']
         fname = f'{str(int(id)).zfill(12)}'
 
-        # engine._io_ops(features, fname)
+        # import IPython, sys; IPython.embed(header='>>>>'); sys.exit()
+
+        engine._io_ops(features, fname)
 
 
 @hydra.main(version_base=None, config_path='./configs', config_name='config')

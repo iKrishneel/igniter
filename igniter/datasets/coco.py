@@ -4,7 +4,7 @@ import time
 from typing import Dict, Any
 from pycocotools.coco import COCO as _COCO
 
-from .s3_client import S3Client
+from ..io.s3_client import S3Client
 
 __all__ = ['COCO']
 

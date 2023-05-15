@@ -7,10 +7,9 @@ from torch.utils.data import Dataset
 
 from PIL import Image
 
-from .s3_client import S3Client
 from .coco import COCO
 from ..utils import check_str
-
+from ..io.s3_client import S3Client
 
 __all__ = ['S3Dataset', 'S3CocoDataset']
 
