@@ -14,7 +14,7 @@ from ignite.contrib.handlers import ProgressBar
 import ignite.distributed as idist
 
 from igniter.registry import model_registry, dataset_registry, io_registry, proc_registry
-from igniter.utils import is_distributed
+from igniter.utils import is_distributed, get_collate_fn
 from igniter.logger import logger
 
 
@@ -36,13 +36,7 @@ def build_train_dataloader(cfg) -> Dict[str, DataLoader]:
     attrs = cfg.datasets
     transforms = build_transforms(cfg)
     dataloaders = {}
-
-    try:
-        collate_fn = attrs.dataloader.collate_fn
-    except AttributeError:
-        collate_fn = 'collate_fn'
-
-    collate_fn = proc_registry.get(collate_fn)
+    collate_fn = get_collate_fn(cfg)
 
     for key in attrs[name]:
         if key not in attrs[name]:
@@ -76,6 +70,15 @@ def build_optim(cfg, model):
     return getattr(module, name)(model.parameters(), **cfg.solvers[name])
 
 
+def build_scheduler(cfg, optimizer):
+    name = cfg.build.get('scheduler', None)
+    if not name:
+        return
+
+    module = importlib.import_module('torch.optim.lr_scheduler')
+    return getattr(module, name)(optimizer=optimizer, **cfg.solvers.schedulers[name])
+
+
 def add_profiler(engine, cfg):
     profiler = BasicTimeProfiler()
     profiler.attach(engine)
@@ -93,11 +96,10 @@ def build_io(cfg):
     except AttributeError:
         return None
     cls = io_registry[engine]
-    if cls is None:
-        cls = importlib.import_module(engine)
+    cls = importlib.import_module(engine) if cls is None else cls
     try:
         return cls.build(cfg)
-    except AttributeError as e:
+    except AttributeError:
         return cls(cfg)
 
 
@@ -106,7 +108,7 @@ def build_func(cfg):
     if func is None:
         logger.info('Using default training function')
         func = proc_registry['default']
-    assert func, f'Training forward function is not defined'
+    assert func, 'Training forward function is not defined'
     return func
 
 
@@ -114,6 +116,7 @@ class TrainerEngine(Engine):
     def __init__(
         self, cfg, process_func, model, optimizer, dataloaders: Dict[str, DataLoader], io_ops=None, **kwargs
     ) -> None:
+        self._scheduler = kwargs.pop('scheduler', None)
         super(TrainerEngine, self).__init__(process_func, **kwargs)
 
         # TODO: Move this to each builder function
@@ -124,7 +127,7 @@ class TrainerEngine(Engine):
                 if dataloaders[key] is None:
                     continue
                 dataloaders[key] = idist.auto_dataloader(
-                    dataloaders[key].dataset, collate_fn=collate_fn, **dict(cfg.datasets.dataloader)
+                    dataloaders[key].dataset, collate_fn=get_collate_fn(cfg), **dict(cfg.datasets.dataloader)
                 )
 
         self._cfg = cfg
@@ -133,8 +136,13 @@ class TrainerEngine(Engine):
         self._train_dl, self._val = dataloaders['train'], dataloaders['val']
         self._io_ops = io_ops
 
+        self.add_event_handler(Events.EPOCH_COMPLETED, self.scheduler)
+        self.add_event_handler(Events.ITERATION_COMPLETED, self.summary)
+
         self.checkpoint()
         self.add_progress_bar()
+
+        self._writer = io_registry['summary_writer'](log_dir=cfg.workdir)
 
     @classmethod
     def build(cls, cfg) -> 'TrainerEngine':
@@ -144,10 +152,19 @@ class TrainerEngine(Engine):
         io_ops = build_io(cfg)
         update_model = build_func(cfg)
         dls = build_train_dataloader(cfg)
-        return cls(cfg, update_model, model, optimizer, dataloaders=dls, io_ops=io_ops)
+        scheduler = build_scheduler(cfg, optimizer)
+        return cls(cfg, update_model, model, optimizer, dataloaders=dls, io_ops=io_ops, scheduler=scheduler)
 
     def __call__(self):
         self.run(self._train_dl, self._cfg.epochs, epoch_length=len(self._train_dl))
+
+    def scheduler(self):
+        if self._scheduler:
+            self._scheduler.step()
+
+    def summary(self):
+        for key in self.state.metrics:
+            self._writer.add_scalar(key, self.state.metrics[key], self.state.iteration)
 
     def checkpoint(self):
         if self._cfg.snapshot == 0:
@@ -157,15 +174,19 @@ class TrainerEngine(Engine):
             Checkpoint({'model': self._model, 'optimizer': self._optimizer}, self._cfg.workdir, n_saved=2),
         )
 
-    def add_progress_bar(self, output_transform=lambda x: {"loss": x}):
-        ProgressBar(persist=True).attach(self, output_transform=output_transform)
+    def add_progress_bar(self, output_transform=None):  # {'loss'}):
+        ProgressBar(persist=True).attach(self, metric_names='all', output_transform=output_transform)
+
+    def get_lr(self) -> float:
+        lr = self._optimizer.param_groups[0]['lr']
+        return lr[0] if isinstance(lr, list) else lr
 
 
-def build_trainer(cfg):
+def build_trainer(cfg) -> TrainerEngine:
     return TrainerEngine.build(cfg)
 
 
-def _trainer(rank, cfg):
+def _trainer(rank, cfg) -> None:
     trainer = build_trainer(cfg)
     trainer()
 

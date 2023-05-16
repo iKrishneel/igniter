@@ -17,7 +17,9 @@ def default_forward(engine, batch) -> Dict[str, torch.Tensor]:
         losses[key].backward()
 
     engine._optimizer.step()
-    return losses['loss'].item()
+    losses['lr'] = engine.get_lr()
+
+    engine.state.metrics = losses
 
 
 @proc_registry('collate_fn')

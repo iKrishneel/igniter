@@ -3,7 +3,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchvision import datasets, transforms
 
 from igniter import initiate
 from igniter.registry import model_registry, dataset_registry, proc_registry
@@ -67,5 +66,3 @@ def collate_fn(data):
 
 
 initiate('./configs/mnist.yaml')
-
-# import IPython; IPython.embed()

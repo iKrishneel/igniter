@@ -48,6 +48,10 @@ solvers:
   engine: "torch.optim"
   Adadelta:
     lr: 0.001
+  schedulers:
+    StepLR:
+      step_size: 20
+      gamma: 0.1
 
 io:
   engine: 'summary_writer'
@@ -58,4 +62,5 @@ build:
   model: "mnist"
   dataset: "mnist"
   solver: "Adadelta"
+  scheduler: "StepLR"
   func: "default"
