@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from typing import Any, Dict, List, Type
+from typing import Any, Dict, List, Type, TypeVar
 from dataclasses import dataclass, field
 
 import threading
@@ -15,18 +15,15 @@ import boto3
 from igniter.logger import logger
 
 
-S3 = Type['boto3.client.S3']
-
-
 @dataclass
 class S3Client(object):
     bucket_name: str
-    _s3: S3 = None
+    # _s3 = None
 
     def __post_init__(self) -> None:
         assert len(self.bucket_name) > 0, f'Invalid bucket name'
         logger.info(f'Data source is s3://{self.bucket_name}')
-        self._s3 = boto3.client('s3')
+        # self._s3 = boto3.client('s3')
 
     def get(self, filename: str, ret_raw: bool = True):
         s3_file = self.client.get_object(Bucket=self.bucket_name, Key=filename)
@@ -39,6 +36,9 @@ class S3Client(object):
 
     def __getitem__(self, filename: str) -> Type[Any]:
         return self.load_file(filename)
+
+    def __reduce__(self):
+        return (self.__class__, (self.bucket_name,))
 
     def load_file(self, filename: str):
         assert len(filename) > 0, f'Invalid filename'
@@ -80,8 +80,8 @@ class S3Client(object):
         return json.loads(content)
 
     @property
-    def client(self) -> S3:
-        return self._s3
+    def client(self):
+        return boto3.client('s3')
 
 
 if __name__ == '__main__':

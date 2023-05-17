@@ -7,7 +7,7 @@ epochs: 100
 distributed:
   backend: nccl
   type: single  # single or multiple
-  nproc_per_node: 1
+  nproc_per_node: 4
   single:
     init_method: tcp://127.0.0.1:23456
 
@@ -56,10 +56,10 @@ solvers:
       step_size: 20
       gamma: 0.1
 
-io:
-  engine: 'summary_writer'
-  args:
-    log_dir: *workdir
+# io:
+#   engine: 'summary_writer'
+#   args:
+#     log_dir: *workdir
   
 build:
   model: "swin"

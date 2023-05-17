@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 
 import importlib
 import os
+from datetime import datetime
 
 from ignite.engine import Engine, Events
 from ignite.handlers import Checkpoint, BasicTimeProfiler
@@ -127,8 +128,10 @@ class TrainerEngine(Engine):
             for key in dataloaders:
                 if dataloaders[key] is None:
                     continue
+                attrs = dict(cfg.datasets.dataloader)
+                attrs.pop('collate_fn', None)
                 dataloaders[key] = idist.auto_dataloader(
-                    dataloaders[key].dataset, collate_fn=get_collate_fn(cfg), **dict(cfg.datasets.dataloader)
+                    dataloaders[key].dataset, collate_fn=get_collate_fn(cfg), **attrs
                 )
 
         self._cfg = cfg
@@ -137,13 +140,16 @@ class TrainerEngine(Engine):
         self._train_dl, self._val = dataloaders['train'], dataloaders['val']
         self._io_ops = io_ops
 
-        self.checkpoint()
-        self.add_progress_bar()
+        name = 'run_' + str(datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
+        self.log_dir = os.path.join(str(cfg.workdir), name)
 
-        self._writer = io_registry['summary_writer'](log_dir=cfg.workdir)
+        self._writer = io_registry['summary_writer'](log_dir=self.log_dir)
 
         self.add_event_handler(Events.EPOCH_COMPLETED, self.scheduler)
         self.add_event_handler(Events.ITERATION_COMPLETED, self.summary)
+
+        self.checkpoint()
+        self.add_progress_bar()
 
     @classmethod
     def build(cls, cfg) -> 'TrainerEngine':
@@ -158,6 +164,7 @@ class TrainerEngine(Engine):
 
     def __call__(self):
         self.run(self._train_dl, self._cfg.epochs, epoch_length=len(self._train_dl))
+        self._writer.close()
 
     def scheduler(self):
         if self._scheduler:
@@ -172,7 +179,7 @@ class TrainerEngine(Engine):
             return
         self.add_event_handler(
             Events.ITERATION_COMPLETED(every=self._cfg.snapshot) | Events.EPOCH_COMPLETED,
-            Checkpoint({'model': self._model, 'optimizer': self._optimizer}, self._cfg.workdir, n_saved=2),
+            Checkpoint({'model': self._model, 'optimizer': self._optimizer}, self.log_dir, n_saved=2),
         )
 
     def add_progress_bar(self, output_transform=None) -> None:

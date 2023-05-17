@@ -21,6 +21,7 @@ install_requires = [
     'hydra-core',
     'omegaconf',
     'colorlog',
+    'boto3',
     'pytorch-ignite @ git+https://github.com/pytorch/ignite@master',
 ]
 

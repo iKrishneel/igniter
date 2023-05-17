@@ -32,11 +32,7 @@ def check_str(string: str, msg: str = 'String is empty!'):
 
 
 def get_collate_fn(cfg: DictConfig) -> Callable:
-    try:
-        collate_fn = cfg.datasets.dataloader.collate_fn
-    except AttributeError:
-        collate_fn = 'collate_fn'
-
     from igniter.registry import proc_registry
 
+    collate_fn = cfg.datasets.dataloader.get('collate_fn', None) or 'collate_fn'
     return proc_registry.get(collate_fn)
