@@ -104,7 +104,8 @@ def build_io(cfg):
 
 
 def build_func(cfg):
-    func = proc_registry[cfg.build.func]
+    func_name = cfg.build.get('func', None) or 'default'
+    func = proc_registry[func_name]
     if func is None:
         logger.info('Using default training function')
         func = proc_registry['default']
@@ -136,13 +137,13 @@ class TrainerEngine(Engine):
         self._train_dl, self._val = dataloaders['train'], dataloaders['val']
         self._io_ops = io_ops
 
-        self.add_event_handler(Events.EPOCH_COMPLETED, self.scheduler)
-        self.add_event_handler(Events.ITERATION_COMPLETED, self.summary)
-
         self.checkpoint()
         self.add_progress_bar()
 
         self._writer = io_registry['summary_writer'](log_dir=cfg.workdir)
+
+        self.add_event_handler(Events.EPOCH_COMPLETED, self.scheduler)
+        self.add_event_handler(Events.ITERATION_COMPLETED, self.summary)
 
     @classmethod
     def build(cls, cfg) -> 'TrainerEngine':
@@ -174,7 +175,7 @@ class TrainerEngine(Engine):
             Checkpoint({'model': self._model, 'optimizer': self._optimizer}, self._cfg.workdir, n_saved=2),
         )
 
-    def add_progress_bar(self, output_transform=None):  # {'loss'}):
+    def add_progress_bar(self, output_transform=None) -> None:
         ProgressBar(persist=True).attach(self, metric_names='all', output_transform=output_transform)
 
     def get_lr(self) -> float:

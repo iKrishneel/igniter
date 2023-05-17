@@ -29,7 +29,7 @@ class SwinTP4W7(nn.Module):
             delattr(model, attr)
 
         self.model = model
-        self.in_size = in_size
+        self.in_size = list(in_size)
 
         target_size = kwargs.get('target_size', [64, 64])
         self.stride = kwargs.get('stride', 32)
@@ -45,9 +45,10 @@ class SwinTP4W7(nn.Module):
         attrs = dict(in_size=cfg.models[name].in_size)
         return cls(**attrs)
 
-    def forward(self, x, target: Dict[str, Any] = None):
+    def forward(self, x: torch.Tensor, target: torch.Tensor = None) -> torch.Tensor:
         _, _, h, w = x.shape
-        x = nn.functional.interpolate(x, self.in_size, mode='nearest')
+        if [h, w] != self.in_size:
+            x = nn.functional.interpolate(x, self.in_size, mode='nearest')
 
         x = self.model.patch_embed(x)
         x = self.model.layers(x)
@@ -55,7 +56,6 @@ class SwinTP4W7(nn.Module):
 
         h1, w1 = self.in_size[1] // self.stride, self.in_size[0] // self.stride
         x = rearrange(x, 'b (h1 w1) c -> b c h1 w1', h1=h1, w1=w1)
-
         x = nn.functional.interpolate(x, self.target_size, mode='bilinear')
         x = self.conv(x)
 
@@ -65,12 +65,13 @@ class SwinTP4W7(nn.Module):
 
         return x
 
-    def losses(self, x: torch.Tensor, target: Dict[str, None]):
-        k = target['sam_feats']
-        kl_loss = nn.KLDivLoss(reduction='batchmean')
-        x = nn.functional.log_softmax(x, dim=1)
-        k = nn.functional.softmax(k, dim=1)
-        return kl_loss(x, k)
+    def losses(self, x: torch.Tensor, target: torch.Tensor) -> Dict[str, torch.Tensor]:
+        # kl_loss = nn.KLDivLoss(reduction='batchmean')
+        # x = nn.functional.log_softmax(x, dim=1)
+        # loss = kl_loss(x, nn.functional.softmax(target, dim=1))
+
+        loss = nn.functional.l1_loss(x, target)
+        return {'loss': loss}
 
 
 @dataset_registry('coco')
@@ -88,32 +89,15 @@ class S3CocoDatasetSam(S3CocoDataset):
 
         contents = self.client.get(filename, False)
         buffer = BytesIO(contents)
-        sam_feats = torch.load(buffer)
-        return {'image': image, 'sam_feats': sam_feats}
+        sam_feats = torch.load(buffer, map_location=torch.device('cpu'))
+        return {'image': image, 'sam_feats': sam_feats, 'filename': filename}
 
 
-@proc_registry('update_model')
-def update_model(engine, batch):
-    engine._model.train()
-    image, target = batch
-
-    # import IPython, sys
-
-    # IPython.embed()
-    # sys.exit()
-
-    engine._optimizer.zero_grad()
-
-    losses = engine._model(image, target)
-
-    iteration = engine.state.iteration
-    writer = engine._io_ops
-    for key in losses:
-        writer.add_scalar(f'Loss/{key}', losses[key], iteration)
-
-    losses.backward()
-    engine._optimizer.step()
-    return losses.item()
+@proc_registry('collate_data')
+def collate_data(batches) -> List[torch.Tensor]:
+    images = torch.stack([batch['image'] for batch in batches])
+    targets = torch.stack([batch['sam_feats'] for batch in batches])
+    return images, targets
 
 
 initiate('./configs/swin.yaml')

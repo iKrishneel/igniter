@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from typing import Tuple, Optional, Callable
+from typing import Any, Tuple, Optional, Callable
 import os.path as osp
 import numpy as np
 from torch.utils.data import Dataset
@@ -38,13 +38,22 @@ class S3CocoDataset(S3Dataset):
         self.root = root
         self.coco = COCO(self.client, anno_fn)
         self.ids = list(sorted(self.coco.imgs.keys()))
+        self.transforms = transforms
 
-    def __getitem__(self, index: int) -> Tuple:
+        # TODO: Add target transforms
+        if transforms:
+            import warnings
+
+            warnings.warn('Target transforms is not yet implemented')
+
+    def __getitem__(self, index: int) -> Tuple[Any, ...]:
         iid = self.ids[index]
         file_name = osp.join(self.root, self.coco.loadImgs(iid)[0]['file_name'])
         image = self.load_image(file_name)
         image = Image.fromarray(image).convert('RGB')
         target = self.coco.loadAnns(self.coco.getAnnIds(iid))
+
+        image = self.transforms(image)
         return image, target
 
     def __len__(self) -> int:
