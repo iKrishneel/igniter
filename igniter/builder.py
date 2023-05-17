@@ -45,7 +45,7 @@ def build_train_dataloader(cfg) -> Dict[str, DataLoader]:
             logger.info(f'Building {key} dataloader')
             dataset = cls(**{**dict(attrs[name][key]), 'transforms': transforms.get(key, None)})
             kwargs = dict(attrs.dataloader)
-            kwargs.pop('collate_fn')
+            kwargs.pop('collate_fn', None)
             dataloaders[key] = DataLoader(dataset, collate_fn=collate_fn, **kwargs)
         except TypeError as e:
             logger.warning(e)
