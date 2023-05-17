@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 import importlib
 import os
 from datetime import datetime
+from omegaconf import OmegaConf
 
 from ignite.engine import Engine, Events
 from ignite.handlers import Checkpoint, BasicTimeProfiler
@@ -150,6 +151,8 @@ class TrainerEngine(Engine):
 
         self.checkpoint()
         self.add_progress_bar()
+
+        OmegaConf.save(cfg, os.path.join(self.log_dir, 'config.yaml'))
 
     @classmethod
     def build(cls, cfg) -> 'TrainerEngine':
