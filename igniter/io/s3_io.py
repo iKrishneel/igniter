@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from typing import Any, Dict, Union
 import os.path as osp
 import torch
 from io import BytesIO
@@ -20,17 +21,20 @@ class S3IO(S3Client):
         self.extension = '.' + extension if '.' not in extension else extension
 
     @classmethod
-    def build(cls, cfg):
-        args = cfg.io.args
-        return cls(bucket_name=args.bucket_name, root=args.root)
+    def build(cls, io_cfg):
+        return cls(bucket_name=io_cfg.bucket_name, root=io_cfg.root)
 
-    def __call__(self, tensor: torch.Tensor, filename: str):
+    def __call__(self, data: Any, filename: str):
         assert len(filename) > 0, 'Invalid filename'
 
         if len(filename.split('.')) == 1:
             filename += self.extension
 
+        # TODO: Check the data type and use appropriate writer
+        self._save_tensors(data, filename)
+
+    def _save_tensors(self, data: Union[Dict[str, Any], torch.Tensor], filename: str):
         buffer = BytesIO()
-        torch.save(tensor, buffer)
+        torch.save(data, buffer)
         path = osp.join(self.root, filename)
         self.write(buffer, path, False)

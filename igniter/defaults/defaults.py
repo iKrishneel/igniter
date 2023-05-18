@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-from typing import Dict
 import torch
+from igniter.utils import convert_bytes_to_human_readable
 from igniter.registry import proc_registry
 
 
@@ -17,6 +17,10 @@ def default_forward(engine, batch) -> None:
 
     engine._optimizer.step()
     losses['lr'] = engine.get_lr()
+
+    if torch.cuda.is_available():
+        _, usage = torch.cuda.mem_get_info()
+        losses['gpu_mem'] = convert_bytes_to_human_readable(usage)
 
     engine.state.metrics = losses
 

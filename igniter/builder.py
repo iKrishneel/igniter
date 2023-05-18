@@ -1,6 +1,6 @@
-#!/usr/bin/env pythono
+#!/usr/bin/env python
 
-from typing import List, Dict, Any
+from typing import Dict, Any, Callable
 
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -85,24 +85,27 @@ def add_profiler(engine, cfg):
     profiler = BasicTimeProfiler()
     profiler.attach(engine)
 
-    @engine.on(Events.ITERATION_COMPLETED(every=cfg.snapshot))
+    @engine.on(Events.ITERATION_COMPLETED(every=cfg.solvers.snapshot))
     def log_intermediate_results():
         profiler.print_results(profiler.get_results())
 
     return profiler
 
 
-def build_io(cfg):
-    try:
-        engine = cfg.io.engine
-    except AttributeError:
-        return None
-    cls = io_registry[engine]
-    cls = importlib.import_module(engine) if cls is None else cls
-    try:
-        return cls.build(cfg)
-    except AttributeError:
-        return cls(cfg)
+def build_io(cfg) -> Dict[str, Callable]:
+    if not cfg.get('io'):
+        return
+
+    def _build(cfg):
+        engine = cfg.engine
+        cls = io_registry[engine]
+        cls = importlib.import_module(engine) if cls is None else cls
+        try:
+            return cls.build(cfg)
+        except AttributeError:
+            return cls(cfg)
+
+    return {key: _build(cfg.io[key]) for key in cfg.io}
 
 
 def build_func(cfg):
@@ -117,7 +120,14 @@ def build_func(cfg):
 
 class TrainerEngine(Engine):
     def __init__(
-        self, cfg, process_func, model, optimizer, dataloaders: Dict[str, DataLoader], io_ops=None, **kwargs
+        self,
+        cfg,
+        process_func,
+        model,
+        optimizer,
+        dataloaders: Dict[str, DataLoader],
+        io_ops: Dict[str, Callable] = None,
+        **kwargs
     ) -> None:
         self._scheduler = kwargs.pop('scheduler', None)
         super(TrainerEngine, self).__init__(process_func, **kwargs)
@@ -139,24 +149,30 @@ class TrainerEngine(Engine):
         self._model = model
         self._optimizer = optimizer
         self._train_dl, self._val = dataloaders['train'], dataloaders['val']
-        self._io_ops = io_ops
 
-        name = 'run_' + str(datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
-        self.log_dir = os.path.join(str(cfg.workdir), name)
+        self.checkpoint = None
+        if io_ops:
+            self.__dict__.update(io_ops)
+
+        if cfg.workdir.get('unique', False):
+            name = 'run_' + str(datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
+            self.log_dir = os.path.join(str(cfg.workdir.path), name)
+        else:
+            self.log_dir = str(cfg.workdir.path)
 
         self._writer = io_registry['summary_writer'](log_dir=self.log_dir)
 
         self.add_event_handler(Events.EPOCH_COMPLETED, self.scheduler)
         self.add_event_handler(Events.ITERATION_COMPLETED, self.summary)
 
-        self.checkpoint()
-        self.add_progress_bar()
+        self.checkpoint_handler()
+        self.add_persistent_logger()
 
         OmegaConf.save(cfg, os.path.join(self.log_dir, 'config.yaml'))
 
     @classmethod
     def build(cls, cfg) -> 'TrainerEngine':
-        os.makedirs(cfg.workdir, exist_ok=True)
+        os.makedirs(cfg.workdir.path, exist_ok=True)
         model = build_model(cfg)
         optimizer = build_optim(cfg, model)
         io_ops = build_io(cfg)
@@ -166,7 +182,7 @@ class TrainerEngine(Engine):
         return cls(cfg, update_model, model, optimizer, dataloaders=dls, io_ops=io_ops, scheduler=scheduler)
 
     def __call__(self):
-        self.run(self._train_dl, self._cfg.epochs, epoch_length=len(self._train_dl))
+        self.run(self._train_dl, self._cfg.solvers.epochs, epoch_length=len(self._train_dl))
         self._writer.close()
 
     def scheduler(self):
@@ -177,20 +193,37 @@ class TrainerEngine(Engine):
         for key in self.state.metrics:
             self._writer.add_scalar(key, self.state.metrics[key], self.state.iteration)
 
-    def checkpoint(self):
-        if self._cfg.snapshot == 0:
+    def checkpoint_handler(self):
+        if self._cfg.solvers.snapshot == 0:
             return
+
+        prefix = '%s'
+        if self.checkpoint is None:
+            logger.warning(f'Using default checkpoint saver to directory {self.log_dir}')
+            self.checkpoint = importlib.import_module('torch').save
+            prefix = os.path.join(self.log_dir, '%s')
+
+        def _checkpointer():
+            filename = prefix % f'model_{str(self.state.epoch).zfill(7)}.pt'
+            self.checkpoint(self.trainer_state_dict(), filename)
+
         self.add_event_handler(
-            Events.ITERATION_COMPLETED(every=self._cfg.snapshot) | Events.EPOCH_COMPLETED,
-            Checkpoint({'model': self._model, 'optimizer': self._optimizer}, self.log_dir, n_saved=2),
+            Events.ITERATION_COMPLETED(every=self._cfg.solvers.snapshot) | Events.EPOCH_COMPLETED,
+            _checkpointer
         )
 
-    def add_progress_bar(self, output_transform=None) -> None:
-        ProgressBar(persist=True).attach(self, metric_names='all', output_transform=output_transform)
+    def add_persistent_logger(self, **kwargs) -> None:
+        ProgressBar(persist=False).attach(self, metric_names='all', output_transform=None)
 
     def get_lr(self) -> float:
         lr = self._optimizer.param_groups[0]['lr']
         return lr[0] if isinstance(lr, list) else lr
+
+    def trainer_state_dict(self) -> Dict[str, Any]:
+        return {
+            'model': self._model.state_dict(),
+            'optimizer': self._optimizer.state_dict()
+        }
 
 
 def build_trainer(cfg) -> TrainerEngine:

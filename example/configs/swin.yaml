@@ -1,8 +1,9 @@
 driver: torch
 device: "cuda"
-workdir: &workdir /tmp/dist/sam
-snapshot: 5000
-epochs: 100
+
+workdir:
+  path: "/tmp/dist/sam"
+  unique: False
 
 distributed:
   backend: nccl
@@ -36,18 +37,19 @@ datasets:
     pin_memory: True
     collate_fn: "collate_data"
   coco:
-    # train:
-    #   bucket_name: "sr-shokunin"
-    #   root: "/root/krishneel/Downloads/datasets/coco/train2017"
-    #   anno_fn: "perception/datasets/coco/annotations/instances_train2017.json"
-    val:
     train:
-      bucket_name: "sr-shokunin"
+      bucket_name: &bucket "sr-shokunin"
       root: "perception/datasets/coco/val2017"
-      anno_fn: "perception/datasets/coco/annotations/instances_val2017.json"
+      anno_fn: "perception/datasets/coco/annotations/instances_val2017.json"    
+    val:
+      # bucket_name: "sr-shokunin"
+      # root: "perception/datasets/coco/val2017"
+      # anno_fn: "perception/datasets/coco/annotations/instances_val2017.json"      
 
 solvers:
   engine: "torch.optim"
+  snapshot: 5000
+  epochs: 100
   SGD:
     lr: 0.001
     momentum: 0.9
@@ -56,11 +58,12 @@ solvers:
       step_size: 20
       gamma: 0.1
 
-# io:
-#   engine: 'summary_writer'
-#   args:
-#     log_dir: *workdir
-  
+io:
+  checkpoint:    
+    engine: 's3_writer'
+    bucket_name: *bucket
+    root: "perception/models/sam_distill/"
+
 build:
   model: "swin"
   dataset: "coco"

@@ -36,3 +36,12 @@ def get_collate_fn(cfg: DictConfig) -> Callable:
 
     collate_fn = cfg.datasets.dataloader.get('collate_fn', None) or 'collate_fn'
     return proc_registry.get(collate_fn)
+
+
+def convert_bytes_to_human_readable(nbytes: int) -> str:
+    suffixes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
+    i = 0
+    while nbytes >= 1024 and i < len(suffixes) - 1:
+        nbytes /= 1024
+        i += 1
+    return f'{nbytes:.2f} {suffixes[i]}'
