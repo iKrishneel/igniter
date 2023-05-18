@@ -127,7 +127,7 @@ class TrainerEngine(Engine):
         optimizer,
         dataloaders: Dict[str, DataLoader],
         io_ops: Dict[str, Callable] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         self._scheduler = kwargs.pop('scheduler', None)
         super(TrainerEngine, self).__init__(process_func, **kwargs)
@@ -208,8 +208,7 @@ class TrainerEngine(Engine):
             self.checkpoint(self.trainer_state_dict(), filename)
 
         self.add_event_handler(
-            Events.ITERATION_COMPLETED(every=self._cfg.solvers.snapshot) | Events.EPOCH_COMPLETED,
-            _checkpointer
+            Events.ITERATION_COMPLETED(every=self._cfg.solvers.snapshot) | Events.EPOCH_COMPLETED, _checkpointer
         )
 
     def add_persistent_logger(self, **kwargs) -> None:
@@ -220,10 +219,7 @@ class TrainerEngine(Engine):
         return lr[0] if isinstance(lr, list) else lr
 
     def trainer_state_dict(self) -> Dict[str, Any]:
-        return {
-            'model': self._model.state_dict(),
-            'optimizer': self._optimizer.state_dict()
-        }
+        return {'model': self._model.state_dict(), 'optimizer': self._optimizer.state_dict()}
 
 
 def build_trainer(cfg) -> TrainerEngine:

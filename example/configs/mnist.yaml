@@ -68,3 +68,7 @@ build:
   solver: "Adadelta"
   scheduler: "StepLR"
   func: "default"
+
+  inference:
+    transforms: "val"
+    weights: ""
