@@ -163,7 +163,6 @@ class TrainerEngine(Engine):
         self.add_event_handler(Events.EPOCH_COMPLETED, self.scheduler)
         self.add_event_handler(Events.ITERATION_COMPLETED, self.summary)
 
-        # self.add_validation()
         self.checkpoint_handler()
         self.add_persistent_logger(self)
 
@@ -195,7 +194,7 @@ class TrainerEngine(Engine):
         for key in self.state.metrics:
             if isinstance(self.state.metrics[key], str):
                 continue
-            self._writer.add_scalar(key, self.state.metrics[key], self.state.iteration)
+            self._writer.add_scalar(f'train/{key}', self.state.metrics[key], self.state.iteration)
 
     def checkpoint_handler(self):
         if self._cfg.solvers.snapshot == 0:
@@ -214,13 +213,6 @@ class TrainerEngine(Engine):
         self.add_event_handler(
             Events.ITERATION_COMPLETED(every=self._cfg.solvers.snapshot) | Events.EPOCH_COMPLETED, _checkpointer
         )
-
-    """
-    def add_validation(self, cfg):
-        if cfg.build.get('val', None):
-
-        # self.add_event_handler(event_name, )
-    """
 
     def get_lr(self) -> float:
         lr = self._optimizer.param_groups[0]['lr']
@@ -263,9 +255,11 @@ class EvaluationEngine(Engine):
         if io_ops:
             self.__dict__.update(io_ops)
 
+        self._iter = 0
         TrainerEngine.add_persistent_logger(self)
 
     def __call__(self):
+        self._iter = 0
         self.run(self._dataloader)
 
 
@@ -280,6 +274,10 @@ def build_validation(cfg, trainer_engine) -> TrainerEngine:
     dataloader = build_dataloader(cfg, 'val')
     val_engine = EvaluationEngine(cfg, process_func, trainer_engine._model, dataloader)
 
+    # evaluation metric
+    metric_name = val_attrs.metric
+    build_func(metric_name)(val_engine, metric_name)
+
     step = val_attrs.get('step', None)
     epoch = val_attrs.get('epoch', 1)
 
@@ -287,10 +285,20 @@ def build_validation(cfg, trainer_engine) -> TrainerEngine:
     event_name = Events.EPOCH_COMPLETED(every=epoch)
     event_name = event_name | Events.ITERATION_COMPLETED(every=step) if step else event_name
 
-    @trainer_engine.on(event_name)
+    @trainer_engine.on(event_name | Events.STARTED)
     def _run_eval():
         logger.info('Running validation')
         val_engine()
+
+        accuracy = val_engine.state.metrics['accuracy']
+        iteration = trainer_engine.state.iteration
+
+        for key, value in val_engine.state.metrics.items():
+            if isinstance(value, str):
+                continue
+            trainer_engine._writer.add_scalar(f'val/{key}', value, iteration)
+
+        print(f'Accuracy: {accuracy:.2f}')
 
 
 def build_engine(cfg) -> TrainerEngine:

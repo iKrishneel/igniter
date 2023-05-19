@@ -19,8 +19,8 @@ def default_forward(engine, batch) -> None:
     losses['lr'] = engine.get_lr()
 
     if torch.cuda.is_available():
-        _, usage = torch.cuda.mem_get_info()
-        losses['gpu_mem'] = convert_bytes_to_human_readable(usage)
+        free, total = torch.cuda.mem_get_info()
+        losses['gpu_mem'] = convert_bytes_to_human_readable(total - free)
 
     engine.state.metrics = losses
 
@@ -35,10 +35,12 @@ def default_val_forward(engine, batch) -> None:
         losses = engine._model.losses(output, targets)
 
     if torch.cuda.is_available():
-        _, usage = torch.cuda.mem_get_info()
-        losses['gpu_mem'] = convert_bytes_to_human_readable(usage)
+        free, total = torch.cuda.mem_get_info()
+        losses['gpu_mem'] = convert_bytes_to_human_readable(total - free)
 
     engine.state.metrics = losses
+
+    return {'y_pred': output, 'y_true': targets}
 
 
 @proc_registry('collate_fn')

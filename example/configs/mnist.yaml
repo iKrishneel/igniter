@@ -45,9 +45,9 @@ models:
 solvers:
   engine: "torch.optim"
   snapshot: 10000
-
-  Adadelta:
-    lr: 0.001
+  SGD:
+    lr: 0.01
+    momentum: 0.5
   schedulers:
     StepLR:
       step_size: 20
@@ -63,13 +63,14 @@ build:
   mnist:
     dataset: "mnist"
     train:
-      solver: "Adadelta"
+      solver: "SGD"
       scheduler: "StepLR"
-      epochs: 100
-      iters_per_epoch: 50
+      epochs: 10
       func: "default"
     val:
-      epoch: 2
-      step: 256
+      epoch: 1
+      # step: 256
+      metric: "accuracy"
+        
 
   model: "mnist"
