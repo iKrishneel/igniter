@@ -31,13 +31,6 @@ def check_str(string: str, msg: str = 'String is empty!'):
     assert len(string) > 0, msg
 
 
-def get_collate_fn(cfg: DictConfig) -> Callable:
-    from igniter.registry import proc_registry
-
-    collate_fn = cfg.datasets.dataloader.get('collate_fn', None) or 'collate_fn'
-    return proc_registry.get(collate_fn)
-
-
 def convert_bytes_to_human_readable(nbytes: int) -> str:
     suffixes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
     i = 0

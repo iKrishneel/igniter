@@ -17,7 +17,7 @@ models:
     in_size: &size [896, 896]
     
 transforms:
-  train:
+  train: &train
     engine: "torchvision.transforms"
     augs:
       ToTensor:
@@ -26,11 +26,13 @@ transforms:
       Normalize:
         mean: [0.485, 0.456, 0.406]
         std: [0.229, 0.224, 0.225]
+  val:
+    <<: *train
 
 datasets:
   dataloader:
-    batch_size: 28
-    num_workers: 16
+    batch_size: 2
+    num_workers: 2
     shuffle: True
     pin_memory: True
     collate_fn: "collate_data"
@@ -40,14 +42,14 @@ datasets:
       root: "perception/datasets/coco/val2017"
       anno_fn: "perception/datasets/coco/annotations/instances_val2017.json"    
     val:
-      # bucket_name: "sr-shokunin"
-      # root: "perception/datasets/coco/val2017"
-      # anno_fn: "perception/datasets/coco/annotations/instances_val2017.json"      
+      bucket_name: "sr-shokunin"
+      root: "perception/datasets/coco/val2017"
+      anno_fn: "perception/datasets/coco/annotations/instances_val2017.json"      
 
 solvers:
   engine: "torch.optim"
   snapshot: 5000
-  epochs: 100
+
   SGD:
     lr: 0.001
     momentum: 0.9
@@ -63,7 +65,25 @@ io:
     root: "perception/models/sam_distill/"
 
 build:
+  swin:
+    dataset: "coco"    
+    train:
+      solver: "SGD"
+      scheduler: "StepLR"
+      epochs: 100
+      iters_per_epoch: 3
+    val:
+      epoch: 2
+      step: 5000
+
   model: "swin"
-  dataset: "coco"
-  solver: "SGD"
-  scheduler: "StepLR"  
+
+  # dataset: "coco"
+  # solver: "SGD"
+  # scheduler: "StepLR"
+  # mode:
+  #   train:
+  #     epochs: 100
+  #   val:
+  #     epoch: 2
+  #     step: 5000

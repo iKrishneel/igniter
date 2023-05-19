@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from typing import Dict, Any, Callable
+from typing import List, Dict, Any, Callable, Optional
 
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -16,61 +16,67 @@ from ignite.contrib.handlers import ProgressBar
 import ignite.distributed as idist
 
 from igniter.registry import model_registry, dataset_registry, io_registry, proc_registry
-from igniter.utils import is_distributed, get_collate_fn
+from igniter.utils import is_distributed
 from igniter.logger import logger
 
+MODES: List[str] = ['train', 'val', 'test']
 
-def build_transforms(cfg) -> Dict[str, Any]:
+
+def model_name(cfg):
+    return cfg.build.model
+
+
+def build_transforms(cfg, mode: Optional[str] = None) -> Dict[str, Any]:
     transforms = {}
     for key in cfg.transforms:
+        if mode and key != mode:
+            continue
         module = importlib.import_module(cfg.transforms[key].engine)
         augs = cfg.transforms[key].augs
         if augs is None:
             transforms[key] = None
             continue
         transforms[key] = module.Compose([getattr(module, cls)(**(augs[cls]) if augs[cls] else {}) for cls in augs])
+
+    if mode:
+        transforms = transforms[mode]
     return transforms
 
 
-def build_train_dataloader(cfg) -> Dict[str, DataLoader]:
-    name = cfg.build.dataset
+def build_dataloader(cfg, mode: str) -> DataLoader:
+    logger.info(f'Building {mode} dataloader')
+
+    name = cfg.build[model_name(cfg)].dataset
+    attrs = cfg.datasets[name].get(mode, None)
+    kwargs = dict(cfg.datasets.dataloader)
+    assert attrs, f'{mode} not found in datasets'
+
     cls = dataset_registry[name]
-    attrs = cfg.datasets
-    transforms = build_transforms(cfg)
-    dataloaders = {}
-    collate_fn = get_collate_fn(cfg)
-
-    for key in attrs[name]:
-        if key not in attrs[name]:
-            continue
-        try:
-            logger.info(f'Building {key} dataloader')
-            dataset = cls(**{**dict(attrs[name][key]), 'transforms': transforms.get(key, None)})
-            kwargs = dict(attrs.dataloader)
-            kwargs.pop('collate_fn', None)
-            dataloaders[key] = DataLoader(dataset, collate_fn=collate_fn, **kwargs)
-        except TypeError as e:
-            logger.warning(e)
-            dataloaders[key] = None
-
-    return dataloaders
+    transforms = build_transforms(cfg, mode)
+    collate_fn = build_func(kwargs.pop('collate_fn', 'collate_fn'))
+    dataset = cls(**{**dict(attrs), 'transforms': transforms})
+    return DataLoader(dataset, collate_fn=collate_fn, **kwargs)
 
 
 def build_model(cfg) -> nn.Module:
-    logger.info(f'Building network model {cfg.build.model}')
-    name = cfg.build.model
+    name = model_name(cfg)
+    logger.info(f'Building network model {name}')
     cls_or_func = model_registry[name]
-    return cls_or_func(**cfg.models[name])
+    attrs = cfg.models[name]
+    if attrs:
+        return cls_or_func(**attrs)
+    return cls_or_func()
 
 
 def build_optim(cfg, model):
+    name = cfg.build[model_name(cfg)].train.solver
+    logger.info(f'Building optimizer {name}')
     module = importlib.import_module(cfg.solvers.engine)
-    name = cfg.build.solver
     return getattr(module, name)(model.parameters(), **cfg.solvers[name])
 
 
 def build_scheduler(cfg, optimizer):
-    name = cfg.build.get('scheduler', None)
+    name = cfg.build[model_name(cfg)].train.get('scheduler', None)
     if not name:
         return
 
@@ -105,8 +111,7 @@ def build_io(cfg) -> Dict[str, Callable]:
     return {key: _build(cfg.io[key]) for key in cfg.io}
 
 
-def build_func(cfg):
-    func_name = cfg.build.get('func', None) or 'default'
+def build_func(func_name: str = 'default'):
     func = proc_registry[func_name]
     if func is None:
         logger.info('Using default training function')
@@ -121,9 +126,9 @@ class TrainerEngine(Engine):
         cfg,
         process_func,
         model,
-        optimizer,
-        dataloaders: Dict[str, DataLoader],
-        io_ops: Dict[str, Callable] = None,
+        dataloader: DataLoader,
+        optimizer=None,
+        io_ops: Optional[Dict[str, Callable]] = None,
         **kwargs,
     ) -> None:
         self._scheduler = kwargs.pop('scheduler', None)
@@ -133,19 +138,15 @@ class TrainerEngine(Engine):
         if is_distributed(cfg):
             model = idist.auto_model(model)
             optimizer = idist.auto_optim(optimizer)
-            for key in dataloaders:
-                if dataloaders[key] is None:
-                    continue
-                attrs = dict(cfg.datasets.dataloader)
-                attrs.pop('collate_fn', None)
-                dataloaders[key] = idist.auto_dataloader(
-                    dataloaders[key].dataset, collate_fn=get_collate_fn(cfg), **attrs
-                )
+            attrs = dict(cfg.datasets.dataloader)
+            dataloader = idist.auto_dataloader(
+                dataloader.dataset, collate_fn=build_func(attrs.pop('collate_fn', 'collate_fin')), **attrs
+            )
 
         self._cfg = cfg
         self._model = model
         self._optimizer = optimizer
-        self._train_dl, self._val = dataloaders['train'], dataloaders['val']
+        self._dataloader = dataloader
 
         self.checkpoint = None
         if io_ops:
@@ -162,24 +163,28 @@ class TrainerEngine(Engine):
         self.add_event_handler(Events.EPOCH_COMPLETED, self.scheduler)
         self.add_event_handler(Events.ITERATION_COMPLETED, self.summary)
 
+        # self.add_validation()
         self.checkpoint_handler()
-        self.add_persistent_logger()
+        self.add_persistent_logger(self)
 
         OmegaConf.save(cfg, os.path.join(self.log_dir, 'config.yaml'))
 
     @classmethod
-    def build(cls, cfg) -> 'TrainerEngine':
+    def build(cls, cfg, mode: Optional[str] = 'train') -> 'TrainerEngine':
+        assert mode in MODES, f'Mode must be one of {MODES} but got {mode}'
         os.makedirs(cfg.workdir.path, exist_ok=True)
         model = build_model(cfg)
         optimizer = build_optim(cfg, model)
         io_ops = build_io(cfg)
-        update_model = build_func(cfg)
-        dls = build_train_dataloader(cfg)
+        update_model = build_func(cfg.build.get('func', 'default'))
+        dataloader = build_dataloader(cfg, mode)
         scheduler = build_scheduler(cfg, optimizer)
-        return cls(cfg, update_model, model, optimizer, dataloaders=dls, io_ops=io_ops, scheduler=scheduler)
+        return cls(cfg, update_model, model, dataloader, optimizer=optimizer, io_ops=io_ops, scheduler=scheduler)
 
     def __call__(self):
-        self.run(self._train_dl, self._cfg.solvers.epochs, epoch_length=len(self._train_dl))
+        train_cfg = self._cfg.build[model_name(self._cfg)].train
+        epoch_length = train_cfg.get('iters_per_epoch', len(self._dataloader))
+        self.run(self._dataloader, train_cfg.epochs, epoch_length=epoch_length)
         self._writer.close()
 
     def scheduler(self):
@@ -188,6 +193,8 @@ class TrainerEngine(Engine):
 
     def summary(self):
         for key in self.state.metrics:
+            if isinstance(self.state.metrics[key], str):
+                continue
             self._writer.add_scalar(key, self.state.metrics[key], self.state.iteration)
 
     def checkpoint_handler(self):
@@ -208,8 +215,12 @@ class TrainerEngine(Engine):
             Events.ITERATION_COMPLETED(every=self._cfg.solvers.snapshot) | Events.EPOCH_COMPLETED, _checkpointer
         )
 
-    def add_persistent_logger(self, **kwargs) -> None:
-        ProgressBar(persist=False).attach(self, metric_names='all', output_transform=None)
+    """
+    def add_validation(self, cfg):
+        if cfg.build.get('val', None):
+
+        # self.add_event_handler(event_name, )
+    """
 
     def get_lr(self) -> float:
         lr = self._optimizer.param_groups[0]['lr']
@@ -218,13 +229,78 @@ class TrainerEngine(Engine):
     def trainer_state_dict(self) -> Dict[str, Any]:
         return {'model': self._model.state_dict(), 'optimizer': self._optimizer.state_dict()}
 
+    @staticmethod
+    def add_persistent_logger(engine, **kwargs) -> None:
+        ProgressBar(persist=False).attach(engine, metric_names='all', output_transform=None)
 
-def build_trainer(cfg) -> TrainerEngine:
-    return TrainerEngine.build(cfg)
+
+class EvaluationEngine(Engine):
+    def __init__(
+        self,
+        cfg,
+        process_func,
+        model,
+        dataloader: DataLoader,
+        io_ops: Optional[Dict[str, Callable]] = None,
+        **kwargs,
+    ) -> None:
+        self._scheduler = kwargs.pop('scheduler', None)
+        super(EvaluationEngine, self).__init__(process_func)
+
+        # TODO: Move this to each builder function
+        if is_distributed(cfg):
+            model = idist.auto_model(model)
+            optimizer = idist.auto_optim(optimizer)
+            attrs = dict(cfg.datasets.dataloader)
+            dataloader = idist.auto_dataloader(
+                dataloader.dataset, collate_fn=build_func(attrs.pop('collate_fn', 'collate_fin')), **attrs
+            )
+
+        self._cfg = cfg
+        self._model = model
+        self._dataloader = dataloader
+
+        if io_ops:
+            self.__dict__.update(io_ops)
+
+        TrainerEngine.add_persistent_logger(self)
+
+    def __call__(self):
+        self.run(self._dataloader)
+
+
+def build_validation(cfg, trainer_engine) -> TrainerEngine:
+    if not cfg.build[model_name(cfg)].get('val', None):
+        logger.warning('Not validation config found. Validation will be skipped')
+        return
+
+    logger.info('Adding validation')
+    val_attrs = cfg.build[model_name(cfg)].val
+    process_func = build_func(val_attrs.get('func', 'default_val_forward'))
+    dataloader = build_dataloader(cfg, 'val')
+    val_engine = EvaluationEngine(cfg, process_func, trainer_engine._model, dataloader)
+
+    step = val_attrs.get('step', None)
+    epoch = val_attrs.get('epoch', 1)
+
+    # TODO: Check if step and epochs are valid
+    event_name = Events.EPOCH_COMPLETED(every=epoch)
+    event_name = event_name | Events.ITERATION_COMPLETED(every=step) if step else event_name
+
+    @trainer_engine.on(event_name)
+    def _run_eval():
+        logger.info('Running validation')
+        val_engine()
+
+
+def build_engine(cfg) -> TrainerEngine:
+    engine = TrainerEngine.build(cfg, mode='train')
+    build_validation(cfg, engine)
+    return engine
 
 
 def _trainer(rank, cfg) -> None:
-    trainer = build_trainer(cfg)
+    trainer = build_engine(cfg)
     trainer()
 
 

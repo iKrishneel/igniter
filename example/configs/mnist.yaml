@@ -41,13 +41,10 @@ datasets:
 
 models:
   mnist:
-    name: "mnist"
-    pretrained: False
 
 solvers:
   engine: "torch.optim"
   snapshot: 10000
-  epochs: 100
 
   Adadelta:
     lr: 0.001
@@ -63,12 +60,16 @@ io:
     root: "perception/models/example/mnist/"
   
 build:
-  model: "mnist"
-  dataset: "mnist"
-  solver: "Adadelta"
-  scheduler: "StepLR"
-  func: "default"
+  mnist:
+    dataset: "mnist"
+    train:
+      solver: "Adadelta"
+      scheduler: "StepLR"
+      epochs: 100
+      iters_per_epoch: 50
+      func: "default"
+    val:
+      epoch: 2
+      step: 256
 
-  inference:
-    transforms: "val"
-    weights: ""
+  model: "mnist"

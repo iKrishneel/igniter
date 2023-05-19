@@ -25,6 +25,22 @@ def default_forward(engine, batch) -> None:
     engine.state.metrics = losses
 
 
+@proc_registry('default_val_forward')
+def default_val_forward(engine, batch) -> None:
+    engine._model.eval()
+    inputs, targets = batch
+
+    with torch.no_grad():
+        output = engine._model(inputs)
+        losses = engine._model.losses(output, targets)
+
+    if torch.cuda.is_available():
+        _, usage = torch.cuda.mem_get_info()
+        losses['gpu_mem'] = convert_bytes_to_human_readable(usage)
+
+    engine.state.metrics = losses
+
+
 @proc_registry('collate_fn')
 def default_collate_fn(data):
     return data
