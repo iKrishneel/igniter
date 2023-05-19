@@ -58,12 +58,9 @@ def build_train_dataloader(cfg) -> Dict[str, DataLoader]:
 
 def build_model(cfg) -> nn.Module:
     logger.info(f'Building network model {cfg.build.model}')
-    cls_or_func = model_registry[cfg.build.model]
-    try:
-        return cls_or_func.build(cfg)
-    except AttributeError as e:
-        logger.debug(e)
-        return cls_or_func(cfg)
+    name = cfg.build.model
+    cls_or_func = model_registry[name]
+    return cls_or_func(**cfg.models[name])
 
 
 def build_optim(cfg, model):

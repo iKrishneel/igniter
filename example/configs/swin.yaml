@@ -14,8 +14,6 @@ distributed:
 
 models:
   swin:
-    name: "swin"
-    pretrained: False
     in_size: &size [896, 896]
     
 transforms:
@@ -31,8 +29,8 @@ transforms:
 
 datasets:
   dataloader:
-    batch_size: 2
-    num_workers: 4
+    batch_size: 28
+    num_workers: 16
     shuffle: True
     pin_memory: True
     collate_fn: "collate_data"

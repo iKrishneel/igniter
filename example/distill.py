@@ -39,12 +39,6 @@ class SwinTP4W7(nn.Module):
 
         self.conv = nn.Conv2d(768, 256, kernel_size=3, padding=1)
 
-    @classmethod
-    def build(cls, cfg):
-        name = cfg.build.model
-        attrs = dict(in_size=cfg.models[name].in_size)
-        return cls(**attrs)
-
     def forward(self, x: torch.Tensor, target: torch.Tensor = None) -> torch.Tensor:
         _, _, h, w = x.shape
         if [h, w] != self.in_size:
