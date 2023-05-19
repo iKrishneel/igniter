@@ -94,4 +94,16 @@ def collate_data(batches) -> List[torch.Tensor]:
     return images, targets
 
 
+@proc_registry('accuracy')
+def metric(engine, name):
+    from ignite.metrics import Accuracy
+
+    def _output_transform(data):
+        import IPython
+
+        IPython.embed()
+
+    Accuracy(output_transform=_output_transform).attach(engine, name)
+
+
 initiate('./configs/swin.yaml')

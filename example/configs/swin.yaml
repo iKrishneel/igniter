@@ -2,7 +2,7 @@ driver: torch
 device: "cuda"
 
 workdir:
-  path: "/tmp/dist/sam"
+  path: "/tmp/dist/distill"
   unique: False
 
 distributed:
@@ -31,16 +31,16 @@ transforms:
 
 datasets:
   dataloader:
-    batch_size: 2
-    num_workers: 2
+    batch_size: 28
+    num_workers: 16
     shuffle: True
     pin_memory: True
     collate_fn: "collate_data"
   coco:
     train:
       bucket_name: &bucket "sr-shokunin"
-      root: "perception/datasets/coco/val2017"
-      anno_fn: "perception/datasets/coco/annotations/instances_val2017.json"    
+      root: "perception/datasets/coco/train2017"
+      anno_fn: "perception/datasets/coco/annotations/instances_train2017.json"    
     val:
       bucket_name: "sr-shokunin"
       root: "perception/datasets/coco/val2017"
@@ -52,10 +52,10 @@ solvers:
 
   SGD:
     lr: 0.001
-    momentum: 0.9
+    momentum: 0.5
   schedulers:
     StepLR:
-      step_size: 20
+      step_size: 8
       gamma: 0.1
 
 io:
@@ -71,19 +71,9 @@ build:
       solver: "SGD"
       scheduler: "StepLR"
       epochs: 100
-      iters_per_epoch: 3
     val:
-      epoch: 2
-      step: 5000
+      epoch: 1
+      step: 50
+      # metric: "accuracy"
 
   model: "swin"
-
-  # dataset: "coco"
-  # solver: "SGD"
-  # scheduler: "StepLR"
-  # mode:
-  #   train:
-  #     epochs: 100
-  #   val:
-  #     epoch: 2
-  #     step: 5000

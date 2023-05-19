@@ -275,8 +275,9 @@ def build_validation(cfg, trainer_engine) -> TrainerEngine:
     val_engine = EvaluationEngine(cfg, process_func, trainer_engine._model, dataloader)
 
     # evaluation metric
-    metric_name = val_attrs.metric
-    build_func(metric_name)(val_engine, metric_name)
+    metric_name = val_attrs.get('metric', None)
+    if metric_name:
+        build_func(metric_name)(val_engine, metric_name)
 
     step = val_attrs.get('step', None)
     epoch = val_attrs.get('epoch', 1)
@@ -290,7 +291,6 @@ def build_validation(cfg, trainer_engine) -> TrainerEngine:
         logger.info('Running validation')
         val_engine()
 
-        accuracy = val_engine.state.metrics['accuracy']
         iteration = trainer_engine.state.iteration
 
         for key, value in val_engine.state.metrics.items():
@@ -298,7 +298,9 @@ def build_validation(cfg, trainer_engine) -> TrainerEngine:
                 continue
             trainer_engine._writer.add_scalar(f'val/{key}', value, iteration)
 
-        print(f'Accuracy: {accuracy:.2f}')
+        if metric_name:
+            accuracy = val_engine.state.metrics[metric_name]
+            print(f'Accuracy: {accuracy:.2f}')
 
 
 def build_engine(cfg) -> TrainerEngine:
