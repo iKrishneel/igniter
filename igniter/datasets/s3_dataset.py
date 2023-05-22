@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from abc import abstractmethod
 from typing import Any, Tuple, Optional, Callable
 import os.path as osp
 import numpy as np
@@ -10,6 +11,8 @@ from PIL import Image
 from .coco import COCO
 from ..utils import check_str
 from ..io.s3_client import S3Client
+from ..logger import logger
+
 
 __all__ = ['S3Dataset', 'S3CocoDataset']
 
@@ -23,7 +26,12 @@ class S3Dataset(Dataset):
         check_str(filename, f'Filename is required')
         return self.client(filename)
 
+    @abstractmethod
     def __getitem__(self, index: int):
+        raise NotImplementedError('Not yet implemented')
+
+    @abstractmethod
+    def __len__(self):
         raise NotImplementedError('Not yet implemented')
 
 
@@ -48,6 +56,14 @@ class S3CocoDataset(S3Dataset):
 
     def __getitem__(self, index: int) -> Tuple[Any, ...]:
         iid = self.ids[index]
+        while True:
+            try:
+                return self._load(iid)
+            except Exception as e:
+                logger.warning(f'{e} for iid: {iid}')
+                iid = np.random.choice(iid)
+
+    def _load(self, iid: int) -> Tuple[Any, ...]:
         file_name = osp.join(self.root, self.coco.loadImgs(iid)[0]['file_name'])
         image = self.load_image(file_name)
         image = Image.fromarray(image).convert('RGB')

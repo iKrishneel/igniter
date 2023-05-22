@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import time
-from typing import Dict, Any
 from pycocotools.coco import COCO as _COCO
 
 from ..io.s3_client import S3Client
@@ -10,7 +9,7 @@ __all__ = ['COCO']
 
 
 class COCO(_COCO):
-    def __init__(self, s3_client, annotation_filename: str):
+    def __init__(self, s3_client: S3Client, annotation_filename: str) -> None:
         print('loading annotations into memory...')
         tic = time.time()
         dataset = s3_client(annotation_filename)
