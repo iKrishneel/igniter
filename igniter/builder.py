@@ -11,7 +11,7 @@ from datetime import datetime
 from omegaconf import OmegaConf
 
 from ignite.engine import Engine, Events
-from ignite.handlers import Checkpoint, BasicTimeProfiler
+from ignite.handlers import BasicTimeProfiler
 from ignite.contrib.handlers import ProgressBar
 import ignite.distributed as idist
 
@@ -205,6 +205,7 @@ class TrainerEngine(Engine):
             logger.warning(f'Using default checkpoint saver to directory {self.log_dir}')
             self.checkpoint = importlib.import_module('torch').save
             prefix = os.path.join(self.log_dir, '%s')
+            return
 
         def _checkpointer():
             filename = prefix % f'model_{str(self.state.epoch).zfill(7)}.pt'
