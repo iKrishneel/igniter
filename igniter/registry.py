@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from dataclasses import dataclass, field
-from typing import Dict, Union
+from typing import Dict, Union, Optional
 
 from tabulate import tabulate
 
@@ -11,10 +11,11 @@ class Registry(object):
     name: str = 'REGISTRY'
     __REGISTRY: Dict[str, object] = field(default_factory=lambda: {})
 
-    def __call__(self, name_or_cls: Union[str, object] = None):
+    def __call__(self, name_or_cls: Union[str, object] = None, prefix: Optional[str] = None):
         def _wrapper(cls):
             assert callable(cls)
             name = cls.__name__ if name_or_cls is None or not isinstance(name_or_cls, str) else name_or_cls
+            name = prefix + name if prefix else name
             if name in self.__REGISTRY:
                 raise ValueError(f'{cls} is already registered {self.__REGISTRY}')
             self.__REGISTRY[name] = cls
@@ -45,4 +46,7 @@ model_registry = Registry(name='Model Registry')
 dataset_registry = Registry(name='Dataset Registry')
 solver_registry = Registry(name='Solver Registry')
 io_registry = Registry(name='IO Registry')
-proc_registry = Registry(name='Proc Registry')
+func_registry = Registry(name='Proc Registry')
+
+# for backward compatibility
+proc_registry = func_registry
