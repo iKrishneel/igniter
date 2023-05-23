@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from glob import glob
+import os
 import os.path as osp
 from typing import Union, Any, Dict
 
@@ -63,7 +64,6 @@ class InferenceEngine(object):
         if not weights:
             logger.warning('Weight is empty!'.upper())
 
-        # if torch.cuda.is_available() and cfg.device.lower() != 'cpu':
         self.model.to(self.device)
         self.model.eval()
 
@@ -75,15 +75,29 @@ class InferenceEngine(object):
         image = self.transforms(image)
 
         image = image[None, :] if len(image.shape) == 3 else image
-        return self.model(image[:]).squeeze(0)
+        return self.model(image.to(self.device)).squeeze(0).cpu()
 
     def _load_weights_from_s3(self, path: str) -> Dict[str, Any]:
         from igniter.io import S3Client
 
         bucket_name = path[5:].split('/')[0]
         assert len(bucket_name) > 0, 'Invalid bucket name'
-        s3_client = S3Client(bucket_name=bucket_name, decoder_func='s3_decode_torch_weights')
 
         path = path[5 + len(bucket_name) + 1 :]
+        # check if weight is in cache
+        root = osp.join(os.environ['HOME'], f'.cache/torch/{path}')
+        if osp.isfile(root):
+            logger.info(f'Cache found in cache, loading from {root}')
+            return torch.load(root, map_location='cpu')
+
+        s3_client = S3Client(bucket_name=bucket_name, decoder_func='decode_torch_weights')
+
         logger.info(f'Loading weights from {path}')
-        return s3_client(path)
+        weights = s3_client(path)
+
+        # save weights to cache
+        os.makedirs('/'.join(root.split('/')[:-1]), exist_ok=True)
+        torch.save(weights, root)
+        logger.info(f'Saved model weight to cache: {root}')
+
+        return weights
