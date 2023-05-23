@@ -31,8 +31,7 @@ def default_val_forward(engine, batch) -> None:
     inputs, targets = batch
 
     with torch.no_grad():
-        output = engine._model(inputs)
-        losses = engine._model.losses(output, targets)
+        losses = engine._model(output, targets)
 
     if torch.cuda.is_available():
         free, total = torch.cuda.mem_get_info()
@@ -40,7 +39,7 @@ def default_val_forward(engine, batch) -> None:
 
     engine.state.metrics = losses
 
-    return {'y_pred': output, 'y_true': targets}
+    # return {'y_pred': output, 'y_true': targets}
 
 
 @proc_registry('collate_fn')
