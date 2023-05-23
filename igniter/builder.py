@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 import importlib
 import os
 from datetime import datetime
-from omegaconf import OmegaConf
+from omegaconf import OmegaConf, DictConfig
 
 from ignite.engine import Engine, Events
 from ignite.handlers import BasicTimeProfiler
@@ -22,11 +22,11 @@ from igniter.logger import logger
 MODES: List[str] = ['train', 'val', 'test']
 
 
-def model_name(cfg):
+def model_name(cfg: DictConfig) -> str:
     return cfg.build.model
 
 
-def build_transforms(cfg, mode: Optional[str] = None) -> Dict[str, Any]:
+def build_transforms(cfg: DictConfig, mode: Optional[str] = None) -> Dict[str, Any]:
     transforms = {}
     for key in cfg.transforms:
         if mode and key != mode:
@@ -43,7 +43,7 @@ def build_transforms(cfg, mode: Optional[str] = None) -> Dict[str, Any]:
     return transforms
 
 
-def build_dataloader(cfg, mode: str) -> DataLoader:
+def build_dataloader(cfg: DictConfig, mode: str) -> DataLoader:
     logger.info(f'Building {mode} dataloader')
 
     name = cfg.build[model_name(cfg)].dataset
@@ -58,7 +58,7 @@ def build_dataloader(cfg, mode: str) -> DataLoader:
     return DataLoader(dataset, collate_fn=collate_fn, **kwargs)
 
 
-def build_model(cfg) -> nn.Module:
+def build_model(cfg: DictConfig) -> nn.Module:
     name = model_name(cfg)
     logger.info(f'Building network model {name}')
     cls_or_func = model_registry[name]
@@ -68,14 +68,14 @@ def build_model(cfg) -> nn.Module:
     return cls_or_func()
 
 
-def build_optim(cfg, model):
+def build_optim(cfg: DictConfig, model: nn.Module):
     name = cfg.build[model_name(cfg)].train.solver
     logger.info(f'Building optimizer {name}')
     module = importlib.import_module(cfg.solvers.engine)
     return getattr(module, name)(model.parameters(), **cfg.solvers[name])
 
 
-def build_scheduler(cfg, optimizer):
+def build_scheduler(cfg: DictConfig, optimizer: nn.Module):
     name = cfg.build[model_name(cfg)].train.get('scheduler', None)
     if not name:
         return
@@ -84,7 +84,7 @@ def build_scheduler(cfg, optimizer):
     return getattr(module, name)(optimizer=optimizer, **cfg.solvers.schedulers[name])
 
 
-def add_profiler(engine, cfg):
+def add_profiler(engine: Engine, cfg: DictConfig):
     profiler = BasicTimeProfiler()
     profiler.attach(engine)
 
@@ -95,7 +95,7 @@ def add_profiler(engine, cfg):
     return profiler
 
 
-def build_io(cfg) -> Dict[str, Callable]:
+def build_io(cfg: DictConfig) -> Dict[str, Callable]:
     if not cfg.get('io'):
         return
 
@@ -123,9 +123,9 @@ def build_func(func_name: str = 'default'):
 class TrainerEngine(Engine):
     def __init__(
         self,
-        cfg,
-        process_func,
-        model,
+        cfg: DictConfig,
+        process_func: Callable,
+        model: nn.Module,
         dataloader: DataLoader,
         optimizer=None,
         io_ops: Optional[Dict[str, Callable]] = None,
@@ -169,7 +169,7 @@ class TrainerEngine(Engine):
         OmegaConf.save(cfg, os.path.join(self.log_dir, 'config.yaml'))
 
     @classmethod
-    def build(cls, cfg, mode: Optional[str] = 'train') -> 'TrainerEngine':
+    def build(cls, cfg: DictConfig, mode: Optional[str] = 'train') -> 'TrainerEngine':
         assert mode in MODES, f'Mode must be one of {MODES} but got {mode}'
         os.makedirs(cfg.workdir.path, exist_ok=True)
         model = build_model(cfg)
@@ -180,23 +180,23 @@ class TrainerEngine(Engine):
         scheduler = build_scheduler(cfg, optimizer)
         return cls(cfg, update_model, model, dataloader, optimizer=optimizer, io_ops=io_ops, scheduler=scheduler)
 
-    def __call__(self):
+    def __call__(self) -> None:
         train_cfg = self._cfg.build[model_name(self._cfg)].train
         epoch_length = train_cfg.get('iters_per_epoch', len(self._dataloader))
         self.run(self._dataloader, train_cfg.epochs, epoch_length=epoch_length)
         self._writer.close()
 
-    def scheduler(self):
+    def scheduler(self) -> None:
         if self._scheduler:
             self._scheduler.step()
 
-    def summary(self):
+    def summary(self) -> None:
         for key in self.state.metrics:
             if isinstance(self.state.metrics[key], str):
                 continue
             self._writer.add_scalar(f'train/{key}', self.state.metrics[key], self.state.iteration)
 
-    def checkpoint_handler(self):
+    def checkpoint_handler(self) -> None:
         if self._cfg.solvers.snapshot == 0:
             return
 
@@ -230,9 +230,9 @@ class TrainerEngine(Engine):
 class EvaluationEngine(Engine):
     def __init__(
         self,
-        cfg,
-        process_func,
-        model,
+        cfg: DictConfig,
+        process_func: Callable,
+        model: nn.Module,
         dataloader: DataLoader,
         io_ops: Optional[Dict[str, Callable]] = None,
         **kwargs,
@@ -264,7 +264,7 @@ class EvaluationEngine(Engine):
         self.run(self._dataloader)
 
 
-def build_validation(cfg, trainer_engine) -> TrainerEngine:
+def build_validation(cfg: DictConfig, trainer_engine: TrainerEngine) -> TrainerEngine:
     if not cfg.build[model_name(cfg)].get('val', None):
         logger.warning('Not validation config found. Validation will be skipped')
         return
@@ -304,18 +304,18 @@ def build_validation(cfg, trainer_engine) -> TrainerEngine:
             print(f'Accuracy: {accuracy:.2f}')
 
 
-def build_engine(cfg) -> TrainerEngine:
+def build_engine(cfg: DictConfig) -> TrainerEngine:
     engine = TrainerEngine.build(cfg, mode='train')
     build_validation(cfg, engine)
     return engine
 
 
-def _trainer(rank, cfg) -> None:
+def _trainer(rank: int, cfg: DictConfig) -> None:
     trainer = build_engine(cfg)
     trainer()
 
 
-def trainer(cfg):
+def trainer(cfg: DictConfig):
     if is_distributed(cfg):
         init_args = dict(cfg.distributed[cfg.distributed.type])
         with idist.Parallel(
