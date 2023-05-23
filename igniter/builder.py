@@ -243,7 +243,6 @@ class EvaluationEngine(Engine):
         # TODO: Move this to each builder function
         if is_distributed(cfg):
             model = idist.auto_model(model)
-            optimizer = idist.auto_optim(optimizer)
             attrs = dict(cfg.datasets.dataloader)
             dataloader = idist.auto_dataloader(
                 dataloader.dataset, collate_fn=build_func(attrs.pop('collate_fn', 'collate_fin')), **attrs

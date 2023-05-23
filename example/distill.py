@@ -54,7 +54,7 @@ class SwinTP4W7(nn.Module):
         x = nn.functional.interpolate(x, self.target_size, mode='bilinear')
         x = self.conv(x)
 
-        if self.training:
+        if self.training or target is not None:
             assert target is not None
             return self.losses(x, target)
 

@@ -73,7 +73,6 @@ build:
       epochs: 100
     val:
       epoch: 1
-      step: 50
       # metric: "accuracy"
 
   model: "swin"
