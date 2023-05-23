@@ -3,6 +3,7 @@
 import os
 from typing import Any, Dict, List, Optional
 from io import BytesIO
+import time
 
 import torch
 import torch.nn as nn
@@ -75,8 +76,14 @@ class S3CocoDatasetSam(S3CocoDataset):
 
     def __getitem__(self, index: int) -> Dict[str, Any]:
         iid = self.ids[index]
-        image, target = super().__getitem__(index)
 
+        while True:
+            time.sleep(0.1)
+            try:
+                image, target = self._load(iid)
+            except Exception as e:
+                logger.warning(f'{e} for iid: {iid}')
+                iid = np.random.choice(iid)
         # temp
         filename = f'perception/sam/coco/{self.root.split(os.sep)[-1]}/features/'
         filename = filename + f'{str(iid).zfill(12)}.pt'
