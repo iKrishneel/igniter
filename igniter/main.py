@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import argparse
 import inspect
 import functools
 
@@ -10,6 +11,18 @@ from omegaconf import DictConfig
 from .builder import trainer
 
 
+def get_argparser(cfg: str = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--config-file', type=str, default=cfg, required=cfg is None)
+    parser.add_argument('--weights', type=str, required=False, default=None)
+    parser.add_argument('--log_dir', type=str, required=False, default=None)
+    parser.add_argument('--test', action='store_true', default=False)
+    parser.add_argument('--image', type=str, required=False)
+    parser.add_argument('--viz', action='store_true', default=True)
+
+    return parser.parse_args()
+
+
 def guard(func):
     @functools.wraps(func)
     def _wrapper(cfg):
@@ -17,7 +30,13 @@ def guard(func):
         caller_name = inspect.getframeinfo(caller_frame).function
         caller_module = inspect.getmodule(caller_frame).__name__
         if caller_module == '__main__':
-            return func(cfg)
+            print(cfg)
+            args = get_argparser(cfg)
+            if args.test:
+                initiate_test(args)
+            else:
+                return func(cfg)
+
         return func
 
     return _wrapper
@@ -37,3 +56,23 @@ def initiate(config_file: str):
         trainer(cfg)
 
     _initiate()
+
+
+def initiate_test(args: argparse.Namespace) -> None:
+    import cv2 as cv
+    from igniter.defaults import build_inference_engine
+    from igniter.visualizer import make_square_grid
+
+    engine = build_inference_engine(args=args)
+
+    image = cv.imread(args.image, cv.IMREAD_ANYCOLOR)
+
+    pred = engine(image)
+
+    if args.viz:
+        im_grid = make_square_grid(pred.numpy())
+
+        import matplotlib.pyplot as plt
+
+        plt.imshow(im_grid)
+        plt.show()

@@ -56,12 +56,21 @@ class InferenceEngine(object):
 
         if weights and isinstance(weights, str):
             logger.info(f'Weights: {weights}')
-            weight_key = kwargs.get('weight_key', 'model')
-            weights = torch.load(weights, map_location=torch.device('cpu'))
-            weights = weights[weight_key] if weight_key and len(weight_key) > 0 else weights
-            self.model.load_state_dict(weights, strict=True)
+            weights = self._load_weights_from_file(weights)
+            # weights = weights[weight_key] if weight_key and len(weight_key) > 0 else weights
 
-        if not weights:
+        if weights:
+            from collections import OrderedDict
+
+            weight_key = kwargs.get('weight_key', 'model')
+            wpth = weights[weight_key]
+            new_wpth = OrderedDict()
+            for key in wpth:
+                new_key = key.replace('module.', '') if 'module.' in key else key
+                new_wpth[new_key] = wpth[key]
+
+            self.model.load_state_dict(new_wpth, strict=True)
+        else:
             logger.warning('Weight is empty!'.upper())
 
         self.model.to(self.device)
@@ -88,7 +97,7 @@ class InferenceEngine(object):
         root = osp.join(os.environ['HOME'], f'.cache/torch/{path}')
         if osp.isfile(root):
             logger.info(f'Cache found in cache, loading from {root}')
-            return torch.load(root, map_location='cpu')
+            return self._load_weights_from_file(root)
 
         s3_client = S3Client(bucket_name=bucket_name, decoder_func='decode_torch_weights')
 
@@ -101,3 +110,17 @@ class InferenceEngine(object):
         logger.info(f'Saved model weight to cache: {root}')
 
         return weights
+
+    def _load_weights_from_file(self, path: str) -> Dict[str, torch.Tensor]:
+        return torch.load(path, map_location='cpu')
+
+
+from argparse import Namespace
+
+
+def build_inference_engine(cfg: DictConfig = None, args: Namespace = None) -> InferenceEngine:
+    if cfg:
+        raise NotImplementedError('Building inference engine using cfg is not yet implemented')
+
+    if args:
+        return InferenceEngine(config_file=args.config_file, weights=args.weights, log_dir=args.log_dir)
