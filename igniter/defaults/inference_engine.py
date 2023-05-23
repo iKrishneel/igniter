@@ -26,9 +26,9 @@ class InferenceEngine(object):
             raise TypeError(f'Invalid log_dir {log_dir}')
 
         if config_file and not osp.isfile(config_file):
-            raise TypeError(f'Invalid config_file {log_dir}')
+            raise TypeError(f'Invalid config_file {config_file}')
 
-        if 's3://' in weights:
+        if weights and 's3://' in weights:
             weights = self._load_weights_from_s3(weights)
 
         if log_dir:
@@ -39,28 +39,33 @@ class InferenceEngine(object):
         assert osp.isfile(config_file), f'Not Found: {config_file}'
         cfg: DictConfig = OmegaConf.load(config_file)
 
+        self.device = cfg.get('device', 'cuda' if torch.cuda.is_available() else 'cpu')
+        logger.info(f'Using device: {self.device}')
+
+        model_name = cfg.build.model
+
         self.model = build_model(cfg)
         self.transforms = kwargs.get('transforms', T.Compose([T.ToTensor()]))
 
-        if cfg.build.get('inference', None):
-            weights = weights or cfg.build.inference['weights']
-            if cfg.build.inference.get('transforms'):
-                self.transforms = build_transforms(cfg)[cfg.build.inference.transforms]
+        inference_attrs = cfg.build[model_name].get('inference', None)
+        if inference_attrs:
+            weights = weights or inference_attrs['weights']
+            if inference_attrs.get('transforms', None):
+                self.transforms = build_transforms(cfg)[inference_attrs.transforms]
 
         if weights and isinstance(weights, str):
             logger.info(f'Weights: {weights}')
+            weight_key = kwargs.get('weight_key', 'model')
             weights = torch.load(weights, map_location=torch.device('cpu'))
-            weights = weights['model'] if 'model' in weights else weights
-            self.model.load_state_dict(weights)
+            weights = weights[weight_key] if weight_key and len(weight_key) > 0 else weights
+            self.model.load_state_dict(weights, strict=True)
 
         if not weights:
-            logger.warning('Weight is empty')
+            logger.warning('Weight is empty!'.upper())
 
-        if torch.cuda.is_available() and cfg.device.lower() != 'cpu':
-            self.model.to(cfg.device)
-
+        # if torch.cuda.is_available() and cfg.device.lower() != 'cpu':
+        self.model.to(self.device)
         self.model.eval()
-        self._device = cfg.device
 
         logger.info('Inference Engine is Ready!')
 
@@ -70,7 +75,7 @@ class InferenceEngine(object):
         image = self.transforms(image)
 
         image = image[None, :] if len(image.shape) == 3 else image
-        return self.model(image[:])
+        return self.model(image[:]).squeeze(0)
 
     def _load_weights_from_s3(self, path: str) -> Dict[str, Any]:
         from igniter.io import S3Client
