@@ -7,36 +7,10 @@ import threading
 from io import BytesIO
 import concurrent.futures as cf
 
-import numpy as np
-import cv2 as cv
-import json
-
 import boto3
 from igniter.logger import logger
-from igniter.registry import Registry
 
-
-s3_utils_registry = Registry()
-
-
-@s3_utils_registry(prefix='s3_')
-def decode_image(content) -> np.ndarray:
-    data = np.frombuffer(content, np.uint8)
-    return cv.imdecode(data, cv.IMREAD_COLOR)
-
-
-@s3_utils_registry(prefix='s3_')
-def decode_json(content) -> Dict[str, Any]:
-    return json.loads(content)
-
-
-@s3_utils_registry(prefix='s3_')
-def decode_torch_weights(content) -> Dict[str, Any]:
-    import torch
-    from io import BytesIO
-
-    buffer = BytesIO(content)
-    return torch.load(buffer, map_location=torch.device('cpu'))
+from .s3_utils import s3_utils_registry
 
 
 @dataclass
@@ -48,6 +22,9 @@ class S3Client(object):
         assert len(self.bucket_name) > 0, f'Invalid bucket name'
         logger.info(f'Data source is s3://{self.bucket_name}')
 
+        if self.decoder_func and isinstance(self.decoder_func, str):
+            self.decoder_func = s3_utils_registry[self.decoder_func]
+
     def get(self, filename: str, ret_raw: bool = True):
         s3_file = self.client.get_object(Bucket=self.bucket_name, Key=filename)
         if ret_raw:
@@ -58,7 +35,7 @@ class S3Client(object):
         return self.load_file(filename)
 
     def __getitem__(self, filename: str) -> Type[Any]:
-        return self.load_file(filename)
+        return self(filename)
 
     def __reduce__(self):
         return (self.__class__, (self.bucket_name,))
@@ -71,18 +48,18 @@ class S3Client(object):
         content_type = s3_file['ResponseMetadata']['HTTPHeaders']['content-type']
         content = self._read(s3_file)
 
-        func_name = self.decoder_func
+        func = self.decoder_func
         if not self.decoder_func:
             # TODO: Remove hardcoded conditions
             if 'image' in content_type:
-                func_name = 's3_decode_image'
+                func_name = 'decode_cv_image'
             elif 'json' in content_type:
-                func_name = 's3_decode_json'
+                func_name = 'decode_json'
             else:
                 raise TypeError(f'Unknown file type {content_type}')
-
-        assert func_name, 'Unknown decoder function'
-        return s3_utils_registry[func_name](content)
+            func = s3_utils_registry[func_name]
+        assert func, 'Unknown decoder function'
+        return func(content)
 
     def write(self, buffer: BytesIO, path: str, same_thread: bool = True) -> None:
         if same_thread:

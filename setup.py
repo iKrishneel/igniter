@@ -22,6 +22,8 @@ install_requires = [
     'omegaconf',
     'colorlog',
     'boto3',
+    'pytest',
+    'pytest-mock',
     'pytorch-ignite @ git+https://github.com/pytorch/ignite@master',
 ]
 
