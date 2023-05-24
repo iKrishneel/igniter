@@ -68,7 +68,8 @@ io:
 
 build:
   swin:
-    dataset: "coco"    
+    dataset: "coco"
+    weights: ""
     train:
       solver: "SGD"
       scheduler: "StepLR"

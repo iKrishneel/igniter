@@ -2,7 +2,6 @@
 
 from typing import List, Dict, Any, Callable, Optional
 
-import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -17,111 +16,14 @@ from ignite.handlers import BasicTimeProfiler
 from ignite.contrib.handlers import ProgressBar
 import ignite.distributed as idist
 
-from igniter.registry import model_registry, dataset_registry, io_registry, proc_registry
 from igniter.utils import is_distributed
 from igniter.logger import logger
+from igniter.registry import model_registry, dataset_registry, io_registry, func_registry, engine_registry
 
 MODES: List[str] = ['train', 'val', 'test']
 
 
-def model_name(cfg: DictConfig) -> str:
-    return cfg.build.model
-
-
-def build_transforms(cfg: DictConfig, mode: Optional[str] = None) -> Dict[str, Any]:
-    transforms = {}
-    for key in cfg.transforms:
-        if mode and key != mode:
-            continue
-        module = importlib.import_module(cfg.transforms[key].engine)
-        augs = cfg.transforms[key].augs
-        if augs is None:
-            transforms[key] = None
-            continue
-        transforms[key] = module.Compose([getattr(module, cls)(**(augs[cls]) if augs[cls] else {}) for cls in augs])
-
-    if mode:
-        transforms = transforms[mode]
-    return transforms
-
-
-def build_dataloader(cfg: DictConfig, mode: str) -> DataLoader:
-    logger.info(f'Building {mode} dataloader')
-
-    name = cfg.build[model_name(cfg)].dataset
-    attrs = cfg.datasets[name].get(mode, None)
-    kwargs = dict(cfg.datasets.dataloader)
-    assert attrs, f'{mode} not found in datasets'
-
-    cls = dataset_registry[name]
-    transforms = build_transforms(cfg, mode)
-    collate_fn = build_func(kwargs.pop('collate_fn', 'collate_fn'))
-    dataset = cls(**{**dict(attrs), 'transforms': transforms})
-    return DataLoader(dataset, collate_fn=collate_fn, **kwargs)
-
-
-def build_model(cfg: DictConfig) -> nn.Module:
-    name = model_name(cfg)
-    logger.info(f'Building network model {name}')
-    cls_or_func = model_registry[name]
-    attrs = cfg.models[name]
-    if attrs:
-        return cls_or_func(**attrs)
-    return cls_or_func()
-
-
-def build_optim(cfg: DictConfig, model: nn.Module):
-    name = cfg.build[model_name(cfg)].train.solver
-    logger.info(f'Building optimizer {name}')
-    module = importlib.import_module(cfg.solvers.engine)
-    return getattr(module, name)(model.parameters(), **cfg.solvers[name])
-
-
-def build_scheduler(cfg: DictConfig, optimizer: nn.Module):
-    name = cfg.build[model_name(cfg)].train.get('scheduler', None)
-    if not name:
-        return
-
-    module = importlib.import_module('torch.optim.lr_scheduler')
-    return getattr(module, name)(optimizer=optimizer, **cfg.solvers.schedulers[name])
-
-
-def add_profiler(engine: Engine, cfg: DictConfig):
-    profiler = BasicTimeProfiler()
-    profiler.attach(engine)
-
-    @engine.on(Events.ITERATION_COMPLETED(every=cfg.solvers.snapshot))
-    def log_intermediate_results():
-        profiler.print_results(profiler.get_results())
-
-    return profiler
-
-
-def build_io(cfg: DictConfig) -> Dict[str, Callable]:
-    if not cfg.get('io'):
-        return
-
-    def _build(cfg):
-        engine = cfg.engine
-        cls = io_registry[engine]
-        cls = importlib.import_module(engine) if cls is None else cls
-        try:
-            return cls.build(cfg)
-        except AttributeError:
-            return cls(cfg)
-
-    return {key: _build(cfg.io[key]) for key in cfg.io}
-
-
-def build_func(func_name: str = 'default'):
-    func = proc_registry[func_name]
-    if func is None:
-        logger.info('Using default training function')
-        func = proc_registry['default']
-    assert func, 'Training forward function is not defined'
-    return func
-
-
+@engine_registry('default_trainer')
 class TrainerEngine(Engine):
     def __init__(
         self,
@@ -235,6 +137,7 @@ class TrainerEngine(Engine):
         ProgressBar(persist=False).attach(engine, metric_names='all', output_transform=None)
 
 
+@engine_registry('default_evaluation')
 class EvaluationEngine(Engine):
     def __init__(
         self,
@@ -269,6 +172,104 @@ class EvaluationEngine(Engine):
     def __call__(self):
         self._iter = 0
         self.run(self._dataloader)
+
+
+def model_name(cfg: DictConfig) -> str:
+    return cfg.build.model
+
+
+def build_transforms(cfg: DictConfig, mode: Optional[str] = None) -> Dict[str, Any]:
+    transforms = {}
+    for key in cfg.transforms:
+        if mode and key != mode:
+            continue
+        module = importlib.import_module(cfg.transforms[key].engine)
+        augs = cfg.transforms[key].augs
+        if augs is None:
+            transforms[key] = None
+            continue
+        transforms[key] = module.Compose([getattr(module, cls)(**(augs[cls]) if augs[cls] else {}) for cls in augs])
+
+    if mode:
+        transforms = transforms[mode]
+    return transforms
+
+
+def build_dataloader(cfg: DictConfig, mode: str) -> DataLoader:
+    logger.info(f'Building {mode} dataloader')
+
+    name = cfg.build[model_name(cfg)].dataset
+    attrs = cfg.datasets[name].get(mode, None)
+    kwargs = dict(cfg.datasets.dataloader)
+    assert attrs, f'{mode} not found in datasets'
+
+    cls = dataset_registry[name]
+    transforms = build_transforms(cfg, mode)
+    collate_fn = build_func(kwargs.pop('collate_fn', 'collate_fn'))
+    dataset = cls(**{**dict(attrs), 'transforms': transforms})
+    return DataLoader(dataset, collate_fn=collate_fn, **kwargs)
+
+
+def build_model(cfg: DictConfig) -> nn.Module:
+    name = model_name(cfg)
+    logger.info(f'Building network model {name}')
+    cls_or_func = model_registry[name]
+    attrs = cfg.models[name]
+    if attrs:
+        return cls_or_func(**attrs)
+    return cls_or_func()
+
+
+def build_optim(cfg: DictConfig, model: nn.Module):
+    name = cfg.build[model_name(cfg)].train.solver
+    logger.info(f'Building optimizer {name}')
+    module = importlib.import_module(cfg.solvers.engine)
+    return getattr(module, name)(model.parameters(), **cfg.solvers[name])
+
+
+def build_scheduler(cfg: DictConfig, optimizer: nn.Module):
+    name = cfg.build[model_name(cfg)].train.get('scheduler', None)
+    if not name:
+        return
+
+    module = importlib.import_module('torch.optim.lr_scheduler')
+    return getattr(module, name)(optimizer=optimizer, **cfg.solvers.schedulers[name])
+
+
+def add_profiler(engine: Engine, cfg: DictConfig):
+    profiler = BasicTimeProfiler()
+    profiler.attach(engine)
+
+    @engine.on(Events.ITERATION_COMPLETED(every=cfg.solvers.snapshot))
+    def log_intermediate_results():
+        profiler.print_results(profiler.get_results())
+
+    return profiler
+
+
+def build_io(cfg: DictConfig) -> Dict[str, Callable]:
+    if not cfg.get('io'):
+        return
+
+    def _build(cfg):
+        engine = cfg.engine
+        cls = io_registry[engine]
+        cls = importlib.import_module(engine) if cls is None else cls
+        try:
+            return cls.build(cfg)
+        except AttributeError:
+            return cls(cfg)
+
+    return {key: _build(cfg.io[key]) for key in cfg.io}
+
+
+def build_func(func_name: str = 'default'):
+    func = func_registry[func_name]
+    if func is None:
+        logger.info('Using default training function')
+        func = func_registry['default']
+    assert func, 'Training forward function is not defined'
+    return func
 
 
 def build_validation(cfg: DictConfig, trainer_engine: TrainerEngine) -> TrainerEngine:
@@ -311,9 +312,17 @@ def build_validation(cfg: DictConfig, trainer_engine: TrainerEngine) -> TrainerE
             print(f'Accuracy: {accuracy:.2f}')
 
 
-def build_engine(cfg: DictConfig) -> TrainerEngine:
-    engine = TrainerEngine.build(cfg, mode='train')
-    build_validation(cfg, engine)
+def build_engine(cfg: DictConfig, mode: str = 'train') -> Callable:
+    # TODO: Remove hardcoded name and replace with registry based
+    logger.warning('# TODO: Remove hardcoded name and replace with registry based')
+    if mode == 'train':
+        engine = TrainerEngine.build(cfg, mode=mode)
+        build_validation(cfg, engine)
+    else:
+        attrs = cfg.build[model_name(cfg)].get('inference', None)
+        name = attrs.get('engine', 'default_inference') if attrs else 'default_inference'
+        engine = engine_registry[name](cfg)
+
     return engine
 
 

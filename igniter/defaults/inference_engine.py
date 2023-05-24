@@ -1,80 +1,66 @@
 #!/usr/bin/env python
 
-from argparse import Namespace
 from glob import glob
 import os
 import os.path as osp
-from typing import Union, Any, Dict
+from typing import Union, Any, Dict, Optional
+from collections import OrderedDict
 
 import numpy as np
 from PIL import Image
 
 import torch
 from torchvision import transforms as T
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig, OmegaConf, open_dict
 
-from igniter.builder import build_model, build_transforms
+from igniter.builder import build_model, build_transforms, model_name
+from igniter.registry import engine_registry
 from igniter.io import S3Client
 from igniter.logger import logger
 
 __all__ = ['InferenceEngine', 'build_inference_engine']
 
 
+@engine_registry('default_inference')
 class InferenceEngine(object):
-    def __init__(self, log_dir: str = None, config_file: str = None, **kwargs):
-        weights = kwargs.get('weights', None)
-        assert log_dir or config_file or weights, 'Must provide either the log_dir or the config file'
+    def __init__(self, config_file: Optional[Union[str, DictConfig]] = None, log_dir: Optional[str] = None, **kwargs):
+        assert log_dir or config_file, 'Must provide either the log_dir or the config file'
 
         if log_dir and not osp.isdir(log_dir):
             raise TypeError(f'Invalid log_dir {log_dir}')
 
-        if config_file and not osp.isfile(config_file):
+        if config_file and not isinstance(config_file, (str, DictConfig)):
             raise TypeError(f'Invalid config_file {config_file}')
 
-        if weights and 's3://' in weights:
-            weights = self._load_weights_from_s3(weights)
+        weights = kwargs.get('weights', None)
 
         if log_dir:
-            extension: str = kwargs.get('extension', '.pt')
-            config_file: str = config_file or osp.join(log_dir, 'config.yaml')
-            weights: str = weights or sorted(glob(osp.join(log_dir, f'*{extension}')), reverse=True)[0]
+            extension = kwargs.get('extension', '.pt')
+            filename = kwargs.get('config_filename', 'config.yaml')
+            config_file = config_file or osp.join(log_dir, filename)
+            weights = weights or sorted(glob(osp.join(log_dir, f'*{extension}')), reverse=True)[0]
 
-        assert osp.isfile(config_file), f'Not Found: {config_file}'
-        cfg: DictConfig = OmegaConf.load(config_file)
+        if isinstance(config_file, DictConfig):
+            cfg = config_file
+        else:
+            assert osp.isfile(config_file), f'Not Found: {config_file}'
+            cfg = OmegaConf.load(config_file)
 
-        self.device = cfg.get('device', 'cuda' if torch.cuda.is_available() else 'cpu')
-        logger.info(f'Using device: {self.device}')
-
-        model_name = cfg.build.model
+        if weights:
+            with open_dict(cfg):
+                cfg.build[model_name(cfg)].weights = weights
 
         self.model = build_model(cfg)
-        self.transforms = kwargs.get('transforms', T.Compose([T.ToTensor()]))
+        self.load_weights(cfg)
 
-        inference_attrs = cfg.build[model_name].get('inference', None)
+        self.transforms = kwargs.get('transforms', T.Compose([T.ToTensor()]))
+        inference_attrs = cfg.build[model_name(cfg)].get('inference', None)
         if inference_attrs:
-            weights = weights or inference_attrs['weights']
             if inference_attrs.get('transforms', None):
                 self.transforms = build_transforms(cfg)[inference_attrs.transforms]
 
-        if weights and isinstance(weights, str):
-            logger.info(f'Weights: {weights}')
-            weights = self._load_weights_from_file(weights)
-            # weights = weights[weight_key] if weight_key and len(weight_key) > 0 else weights
-
-        if weights:
-            from collections import OrderedDict
-
-            weight_key = kwargs.get('weight_key', 'model')
-            wpth = weights[weight_key]
-            new_wpth = OrderedDict()
-            for key in wpth:
-                new_key = key.replace('module.', '') if 'module.' in key else key
-                new_wpth[new_key] = wpth[key]
-
-            self.model.load_state_dict(new_wpth, strict=True)
-        else:
-            logger.warning('Weight is empty!'.upper())
-
+        self.device = cfg.get('device', 'cuda' if torch.cuda.is_available() else 'cpu')
+        logger.info(f'Using device: {self.device}')
         self.model.to(self.device)
         self.model.eval()
 
@@ -82,12 +68,35 @@ class InferenceEngine(object):
 
     @torch.no_grad()
     def __call__(self, image: Union[np.ndarray, Image.Image]):
-        assert image, 'Input image is required'
+        assert image is not None, 'Input image is required'
         image = Image.fromarray(image) if not isinstance(image, Image.Image) else image
         image = self.transforms(image)
 
         image = image[None, :] if len(image.shape) == 3 else image
         return self.model(image.to(self.device)).squeeze(0).cpu()
+
+    def load_weights(self, cfg: DictConfig, weight_key: str = 'model'):
+        weight_path = cfg.build[model_name(cfg)].get('weights')
+        if not weight_path or len(weight_path) == 0:
+            logger.warning('Weight is empty!'.upper())
+            return
+
+        if 's3://' in weight_path:
+            weight_dict = self._load_weights_from_s3(weight_path)
+        else:
+            weight_dict = self._load_weights_from_file(weight_path)
+
+        assert weight_dict is not None
+
+        def _remap_keys(weight_dict):
+            new_wpth = OrderedDict()
+            for key in weight_dict:
+                new_key = key.replace('module.', '') if 'module.' in key else key
+                new_wpth[new_key] = weight_dict[key]
+            return new_wpth
+
+        wpth = _remap_keys(weight_dict[weight_key])
+        self.model.load_state_dict(wpth, strict=True)
 
     def _load_weights_from_s3(self, path: str) -> Dict[str, Any]:
         bucket_name = path[5:].split('/')[0]
@@ -114,11 +123,3 @@ class InferenceEngine(object):
 
     def _load_weights_from_file(self, path: str) -> Dict[str, torch.Tensor]:
         return torch.load(path, map_location='cpu')
-
-
-def build_inference_engine(cfg: DictConfig = None, args: Namespace = None) -> InferenceEngine:
-    if cfg:
-        raise NotImplementedError('Building inference engine using cfg is not yet implemented')
-
-    if args:
-        return InferenceEngine(config_file=args.config_file, weights=args.weights, log_dir=args.log_dir)

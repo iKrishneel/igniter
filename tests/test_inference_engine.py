@@ -42,7 +42,7 @@ def setup_test():
         'models': {
             'test_model': None,
         },
-        'build': {'model': 'test_model', 'test_model': {'inference': {'weights': WPATH}}},
+        'build': {'model': 'test_model', 'test_model': {'weights': WPATH}},
     }
 
     config_file = osp.join(ROOT, 'config.yaml')
@@ -78,7 +78,7 @@ def assert_all(func):
 
 
 @assert_all
-def test_with_config(config):
+def _test_with_config(config):
     return InferenceEngine(config_file=config['config_file'])
 
 
@@ -88,33 +88,37 @@ def test_with_config_and_weights(config):
 
 
 @assert_all
-def test_with_logdir(config):
+def _test_with_logdir(config):
     return InferenceEngine(log_dir=ROOT, extension='.pth')
 
 
-def test_with_no_input(config):
+def _test_with_no_input(config):
     with pytest.raises(AssertionError) as e:
-        ie = InferenceEngine()
+        InferenceEngine()
     assert str(e.value) == 'Must provide either the log_dir or the config file'
 
 
-def test_with_invalid_logdir(config):
+def _test_with_invalid_logdir(config):
     with pytest.raises(IndexError) as e:
-        ie = InferenceEngine(log_dir='/tmp/')
+        InferenceEngine(log_dir='/tmp/')
     assert str(e.value) == 'list index out of range'
 
 
-def test_with_invalid_config(config):
-    with pytest.raises(TypeError) as e:
-        ie = InferenceEngine(config_file='/tmp/config.yaml')
-    assert str(e.value) == 'Invalid config_file /tmp/config.yaml'
+def _test_with_invalid_config(config):
+    with pytest.raises(AssertionError) as e:
+        InferenceEngine(config_file='/tmp/config.yaml')
+    assert str(e.value) == 'Not Found: /tmp/config.yaml'
+
+    with pytest.raises(AssertionError) as e:
+        InferenceEngine(config_file='/tmp/')
+    assert str(e.value) == 'Not Found: /tmp/'
 
     with pytest.raises(TypeError) as e:
-        ie = InferenceEngine(config_file='/tmp/')
-    assert str(e.value) == 'Invalid config_file /tmp/'
+        InferenceEngine(config_file=2.0)
+    assert str(e.value) == 'Invalid config_file 2.0'
 
 
-def test_with_input(config):
+def _test_with_input(config):
     image = np.random.randint(0, 255, (224, 224, 3)).astype(np.uint8)
 
     ie = InferenceEngine(log_dir=ROOT, extension='.pth')

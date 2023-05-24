@@ -11,7 +11,12 @@ from omegaconf import DictConfig
 from .builder import trainer
 
 
-def get_argparser(cfg: str = None) -> argparse.Namespace:
+"""
+from .registry import func_registry
+
+
+@func_registry('default_argument_parser')
+def get_argument_parser(cfg: str = None) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     parser.add_argument('--config-file', type=str, default=cfg, required=cfg is None)
     parser.add_argument('--weights', type=str, required=False, default=None)
@@ -19,21 +24,22 @@ def get_argparser(cfg: str = None) -> argparse.Namespace:
     parser.add_argument('--test', action='store_true', default=False)
     parser.add_argument('--image', type=str, required=False)
     parser.add_argument('--viz', action='store_true', default=True)
-
-    return parser.parse_args()
+    return parser
+"""
 
 
 def guard(func):
     @functools.wraps(func)
-    def _wrapper(cfg):
+    def _wrapper(config_file: str = None):
         caller_frame = inspect.currentframe().f_back
         caller_module = inspect.getmodule(caller_frame).__name__
         if caller_module == '__main__':
-            args = get_argparser(cfg)
-            if args.test:
-                initiate_test(args)
-            else:
-                func(cfg)
+            # args = func_registry['default_argument_parser'](config_file).parse_args()
+            # if args.test:
+            #     _test(args)
+            # else:
+            #     func(config_file, weights=args.weights)
+            func(config_file)
 
     return _wrapper
 
@@ -53,26 +59,33 @@ def initiate(config_file: str):
 
     @hydra.main(**kwargs)
     def _initiate(cfg: DictConfig):
-        trainer(cfg)
+        _run(cfg)
 
     _initiate()
 
 
-def initiate_test(args: argparse.Namespace) -> None:
+def _run(cfg: DictConfig):
+    mode = cfg.build.get('mode', 'train')
+    if mode == 'train':
+        trainer(cfg)
+    elif mode in ['val', 'test', 'inference']:
+        _test(cfg)
+    else:
+        raise TypeError(f'Unknown mode {mode}')
+
+
+def _test(cfg: DictConfig) -> None:
+    import matplotlib.pyplot as plt
     import cv2 as cv
-    from igniter.defaults import build_inference_engine
+    from igniter.builder import build_engine
     from igniter.visualizer import make_square_grid
 
-    engine = build_inference_engine(args=args)
+    engine = build_engine(cfg, mode='inference')
 
-    image = cv.imread(args.image, cv.IMREAD_ANYCOLOR)
+    image = cv.imread(cfg.image, cv.IMREAD_ANYCOLOR)
 
     pred = engine(image)
 
-    if args.viz:
-        im_grid = make_square_grid(pred.numpy())
-
-        import matplotlib.pyplot as plt
-
-        plt.imshow(im_grid)
-        plt.show()
+    im_grid = make_square_grid(pred.numpy())
+    plt.imshow(im_grid)
+    plt.show()
