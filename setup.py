@@ -18,7 +18,7 @@ install_requires = [
     'opencv-python',
     'tqdm',
     'pytest',
-    'hydra-core',
+    'hydra-core >= 1.2',
     'omegaconf',
     'colorlog',
     'boto3',

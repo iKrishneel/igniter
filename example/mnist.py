@@ -26,8 +26,13 @@ class Net(nn.Module):
         x = F.dropout(x, training=self.training)
         x = self.fc2(x)
         x = F.log_softmax(x, dim=-1)
-        if self.training:
-            return self.losses(x, targets)
+
+        if targets is not None:
+            losses = self.losses(x, targets)
+            if self.training:
+                return losses
+            return x, losses
+
         return x
 
     def losses(self, x, targets):

@@ -27,17 +27,13 @@ def guard(func):
     @functools.wraps(func)
     def _wrapper(cfg):
         caller_frame = inspect.currentframe().f_back
-        caller_name = inspect.getframeinfo(caller_frame).function
         caller_module = inspect.getmodule(caller_frame).__name__
         if caller_module == '__main__':
-            print(cfg)
             args = get_argparser(cfg)
             if args.test:
                 initiate_test(args)
             else:
-                return func(cfg)
-
-        return func
+                func(cfg)
 
     return _wrapper
 
@@ -51,7 +47,11 @@ def initiate(config_file: str):
 
     config_path = os.path.abspath(config_path) if not os.path.isabs(config_path) else config_path
 
-    @hydra.main(version_base=None, config_path=config_path, config_name=config_name)
+    kwargs = dict(version_base=None, config_path=config_path, config_name=config_name)
+    if hydra.__version__ < '1.2':
+        kwargs.pop('version_base', None)
+
+    @hydra.main(**kwargs)
     def _initiate(cfg: DictConfig):
         trainer(cfg)
 

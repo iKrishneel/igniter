@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from argparse import Namespace
 from glob import glob
 import os
 import os.path as osp
@@ -13,9 +14,10 @@ from torchvision import transforms as T
 from omegaconf import DictConfig, OmegaConf
 
 from igniter.builder import build_model, build_transforms
+from igniter.io import S3Client
 from igniter.logger import logger
 
-__all__ = ['InferenceEngine']
+__all__ = ['InferenceEngine', 'build_inference_engine']
 
 
 class InferenceEngine(object):
@@ -80,6 +82,7 @@ class InferenceEngine(object):
 
     @torch.no_grad()
     def __call__(self, image: Union[np.ndarray, Image.Image]):
+        assert image, 'Input image is required'
         image = Image.fromarray(image) if not isinstance(image, Image.Image) else image
         image = self.transforms(image)
 
@@ -87,8 +90,6 @@ class InferenceEngine(object):
         return self.model(image.to(self.device)).squeeze(0).cpu()
 
     def _load_weights_from_s3(self, path: str) -> Dict[str, Any]:
-        from igniter.io import S3Client
-
         bucket_name = path[5:].split('/')[0]
         assert len(bucket_name) > 0, 'Invalid bucket name'
 
@@ -113,9 +114,6 @@ class InferenceEngine(object):
 
     def _load_weights_from_file(self, path: str) -> Dict[str, torch.Tensor]:
         return torch.load(path, map_location='cpu')
-
-
-from argparse import Namespace
 
 
 def build_inference_engine(cfg: DictConfig = None, args: Namespace = None) -> InferenceEngine:

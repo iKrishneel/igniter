@@ -54,18 +54,19 @@ class SwinTP4W7(nn.Module):
         x = nn.functional.interpolate(x, self.target_size, mode='bilinear')
         x = self.conv(x)
 
-        if self.training or target is not None:
-            assert target is not None
-            return self.losses(x, target)
+        if target is not None:
+            losses = self.losses(x, target)
+            if self.training:
+                return losses
+            return x, self.losses(x, target)
 
         return x
 
     def losses(self, x: torch.Tensor, target: torch.Tensor) -> Dict[str, torch.Tensor]:
-        # kl_loss = nn.KLDivLoss(reduction='batchmean')
-        # x = nn.functional.log_softmax(x, dim=1)
-        # loss = kl_loss(x, nn.functional.softmax(target, dim=1))
-
-        loss = nn.functional.l1_loss(x, target)
+        kl_loss = nn.KLDivLoss(reduction='batchmean')
+        x = nn.functional.log_softmax(x, dim=1)
+        loss = kl_loss(x, nn.functional.softmax(target, dim=1))
+        # loss = nn.functional.l1_loss(x, target)
         return {'loss': loss}
 
 
@@ -81,6 +82,7 @@ class S3CocoDatasetSam(S3CocoDataset):
             time.sleep(0.1)
             try:
                 image, target = self._load(iid)
+                break
             except Exception as e:
                 logger.warning(f'{e} for iid: {iid}')
                 iid = np.random.choice(iid)
