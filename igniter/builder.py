@@ -2,6 +2,8 @@
 
 from typing import List, Dict, Any, Callable, Optional
 
+import numpy as np
+import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
@@ -194,7 +196,13 @@ class TrainerEngine(Engine):
         for key in self.state.metrics:
             if isinstance(self.state.metrics[key], str):
                 continue
-            self._writer.add_scalar(f'train/{key}', self.state.metrics[key], self.state.iteration)
+
+            value = self.state.metrics[key]
+            value = torch.Tensor([value]) if isinstance(value, (float, int)) else value
+            if torch.isnan(value.detach().cpu()).any():
+                raise ValueError(f'{key} is NaN. Terminating on iteration {self.state.iteration}')
+
+            self._writer.add_scalar(f'train/{key}', value, self.state.iteration)
 
     def checkpoint_handler(self) -> None:
         if self._cfg.solvers.snapshot == 0:
