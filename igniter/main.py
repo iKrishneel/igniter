@@ -86,6 +86,8 @@ def _test(cfg: DictConfig) -> None:
 
     pred = engine(image)
 
+    print(pred.min(), pred.max())
+
     im_grid = make_square_grid(pred.numpy())
     plt.imshow(im_grid)
     plt.show()

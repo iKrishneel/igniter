@@ -18,7 +18,9 @@ from igniter.registry import engine_registry
 from igniter.io import S3Client
 from igniter.logger import logger
 
-__all__ = ['InferenceEngine', 'build_inference_engine']
+__all__ = [
+    'InferenceEngine',
+]
 
 
 @engine_registry('default_inference')

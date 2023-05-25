@@ -32,13 +32,16 @@ class SwinTP4W7(nn.Module):
         self.model = model
         self.in_size = list(in_size)
 
+        out_channels = kwargs.get('out_channels', 256)
         target_size = kwargs.get('target_size', [64, 64])
         self.stride = kwargs.get('stride', 32)
         self.target_size = (
             [target_size, target_size] if not isinstance(target_size, list) or len(target_size) == 1 else target_size
         )
 
-        self.conv = nn.Conv2d(768, 256, kernel_size=3, padding=1)
+        self.neck = nn.Sequential(
+            nn.Conv2d(768, out_channels, kernel_size=3, padding=1, bias=False), nn.LinearNorm(out_channels)
+        )
 
     def forward(self, x: torch.Tensor, target: torch.Tensor = None) -> torch.Tensor:
         _, _, h, w = x.shape
@@ -52,7 +55,7 @@ class SwinTP4W7(nn.Module):
         h1, w1 = self.in_size[1] // self.stride, self.in_size[0] // self.stride
         x = rearrange(x, 'b (h1 w1) c -> b c h1 w1', h1=h1, w1=w1)
         x = nn.functional.interpolate(x, self.target_size, mode='bilinear')
-        x = self.conv(x)
+        x = self.neck(x)
 
         if target is not None:
             losses = self.losses(x, target)
