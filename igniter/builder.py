@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 import importlib
 import os
 from datetime import datetime
-from omegaconf import OmegaConf, DictConfig
+from omegaconf import OmegaConf, DictConfig, open_dict
 
 from ignite.engine import Engine, Events
 from ignite.handlers import BasicTimeProfiler
@@ -76,13 +76,19 @@ class TrainerEngine(Engine):
     def build(cls, cfg: DictConfig, mode: Optional[str] = 'train') -> 'TrainerEngine':
         assert mode in MODES, f'Mode must be one of {MODES} but got {mode}'
         os.makedirs(cfg.workdir.path, exist_ok=True)
+
+        mode_attrs = cfg.build[model_name(cfg)].get(mode, None)
+        func_name = 'default'
+        if mode_attrs:
+            func_name = mode_attrs.get('func', func_name)
+
+        process_func = build_func(func_name)
         model = build_model(cfg)
         optimizer = build_optim(cfg, model)
         io_ops = build_io(cfg)
-        update_model = build_func(cfg.build.get('func', 'default'))
         dataloader = build_dataloader(cfg, mode)
         scheduler = build_scheduler(cfg, optimizer)
-        return cls(cfg, update_model, model, dataloader, optimizer=optimizer, io_ops=io_ops, scheduler=scheduler)
+        return cls(cfg, process_func, model, dataloader, optimizer=optimizer, io_ops=io_ops, scheduler=scheduler)
 
     def __call__(self) -> None:
         train_cfg = self._cfg.build[model_name(self._cfg)].train
@@ -312,7 +318,18 @@ def build_validation(cfg: DictConfig, trainer_engine: TrainerEngine) -> TrainerE
             print(f'Accuracy: {accuracy:.2f}')
 
 
+def validate_config(cfg: DictConfig):
+    # TODO: Validate all required fields and set defaults where missing
+    with open_dict(cfg):
+        if cfg.get('solvers', None):
+            cfg.solvers.snapshot = cfg.solvers.get('snapshot', -1)
+
+    return cfg
+
+
 def build_engine(cfg: DictConfig, mode: str = 'train') -> Callable:
+    validate_config(cfg)
+
     # TODO: Remove hardcoded name and replace with registry based
     logger.warning('# TODO: Remove hardcoded name and replace with registry based')
     if mode == 'train':

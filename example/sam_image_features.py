@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from torchvision.datasets import CocoDetection as _Dataset
 
-from igniter.registry import model_registry, dataset_registry, io_registry, proc_registry
+from igniter.registry import model_registry, dataset_registry, io_registry, func_registry
 from igniter import initiate
 from igniter.io import S3IO
 
@@ -16,23 +16,28 @@ from segment_anything.modeling import Sam
 
 @model_registry('sam')
 class SamPredictor(_SamPredictor):
-    def __init__(self, *args, **kwargs):
-        super(SamPredictor, self).__init__(*args, **kwargs)
+    def __init__(self, name: str, checkpoint: str):
+        assert osp.isfile(checkpoint), f'Weight file not found {checkpoint}!'
+        sam = sam_model_registry[name](checkpoint=checkpoint)
+        super(SamPredictor, self).__init__(sam_model=sam)
 
     @torch.no_grad()
     def forward(self, batched_input: List[Dict[str, Any]]) -> torch.Tensor:
-        input_images = torch.stack([self.model.preprocess(x['image']) for x in batched_input], dim=0)
-        return self.model.image_encoder(input_images)
+        return self.set_images([x['image'] for x in batched_input])
 
-    @classmethod
-    def build(cls, cfg) -> Sam:
-        name = cfg.build.model
-        checkpoint = cfg.models[name].weights
-        assert osp.isfile(checkpoint), f'Weight file not found {checkpoint}!'
-        model_type = cfg.models[name].name
-        sam = sam_model_registry[model_type](checkpoint=checkpoint)
+    @torch.no_grad()
+    def set_images(self, images: List[np.ndarray], image_format: str = 'RGB') -> None:
+        assert image_format in [
+            "RGB",
+            "BGR",
+        ], f"image_format must be in ['RGB', 'BGR'], is {image_format}."
+        if image_format != self.model.image_format:
+            images = [image[..., ::-1] for image in images]
 
-        return cls(**{'sam_model': sam.to(cfg.device)})
+        input_images = [torch.as_tensor(self.transform.apply_image(image).transpose(2, 0, 1)) for image in images]
+        input_images = [self.model.preprocess(image) for image in input_images]
+        input_images_torch = torch.stack(input_images).to(self.device)
+        return self.model.image_encoder(input_images_torch)
 
     def children(self) -> Iterator['Module']:
         for name, module in self.model.named_children():
@@ -72,14 +77,14 @@ class Dataset(_Dataset):
         if self.transforms is not None:
             image = self.transforms(image)
 
-        image = torch.from_numpy(np.asarray(image).transpose((2, 0, 1)))
+        image = np.asarray(image)
         return {'image': image, 'id': id}  # , 'original_size': image.shape[1:]}
 
 
-@proc_registry('sam_image_feature_saver')
+@func_registry('sam_image_feature_saver')
 def sam_forward(engine, batch):
     cfg = engine._cfg
-    inputs = [{'image': data['image'].to(cfg.device)} for data in batch]
+    inputs = [{'image': data['image']} for data in batch]
     try:
         features = engine._model.module.forward(inputs)
     except AttributeError:
@@ -88,7 +93,8 @@ def sam_forward(engine, batch):
     for feature, data in zip(features, batch):
         id = data['id']
         fname = f'{str(int(id)).zfill(12)}'
-        engine._io_ops(feature, fname)
+        print(fname)
+        engine.s3_writer(feature, fname)
 
 
 initiate('./configs/sam_image_features.yaml')

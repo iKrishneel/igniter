@@ -1,8 +1,8 @@
 driver: torch
 device: "cuda"
-workdir: /tmp/dist/sam
-snapshot: 0
-epochs: 1
+
+workdir:
+  path: "/tmp/dist/sam"
 
 distributed:
   backend: nccl
@@ -31,12 +31,13 @@ datasets:
     train:
       root: "/root/krishneel/Downloads/datasets/coco/val2017"
       annFile: "/root/krishneel/Downloads/datasets/coco/annotations/instances_val2017.json"
-    val:
-
+    # train:
+    #   root: "/root/krishneel/Downloads/datasets/coco/train2017"
+    #   annFile: "/root/krishneel/Downloads/datasets/coco/annotations/instances_train2017.json"
 models:
   sam:
     name: "vit_h"    
-    weights: "/root/krishneel/Documents/research/zero_shot/segment-anything/weights/sam_vit_h_4b8939.pth"
+    checkpoint: "/root/krishneel/Documents/research/zero_shot/segment-anything/weights/sam_vit_h_4b8939.pth"
 
 solvers:
   engine: 'torch.optim'
@@ -45,13 +46,17 @@ solvers:
     momentum: 0.9
 
 io:
-  engine: 's3_writer'
-  args:
+  s3_writer:
+    engine: 's3_writer'
     bucket_name: 'sr-shokunin'
     root: 'perception/sam/coco/val2017/features'
-  
+
 build:
+  sam:
+    dataset: "coco"
+    train:
+      solver: "SGD"
+      epochs: 1
+      func: "sam_image_feature_saver"
+
   model: "sam"
-  dataset: "coco"
-  solver: "SGD"
-  func: "sam_image_feature_saver"
