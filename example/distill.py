@@ -14,6 +14,8 @@ import numpy as np
 import hydra
 from timm.models import swin_tiny_patch4_window7_224
 
+from segment_anything.modeling.common import LayerNorm2d
+
 from igniter import initiate
 from igniter.builder import trainer
 from igniter.datasets import S3CocoDataset
@@ -40,7 +42,7 @@ class SwinTP4W7(nn.Module):
         )
 
         self.neck = nn.Sequential(
-            nn.Conv2d(768, out_channels, kernel_size=3, padding=1, bias=False), nn.LayerNorm(out_channels)
+            nn.Conv2d(768, out_channels, kernel_size=3, padding=1, bias=False), LayerNorm2d(out_channels)
         )
 
     def forward(self, x: torch.Tensor, target: torch.Tensor = None) -> torch.Tensor:
