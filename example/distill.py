@@ -40,7 +40,7 @@ class SwinTP4W7(nn.Module):
         )
 
         self.neck = nn.Sequential(
-            nn.Conv2d(768, out_channels, kernel_size=3, padding=1, bias=False), nn.LinearNorm(out_channels)
+            nn.Conv2d(768, out_channels, kernel_size=3, padding=1, bias=False), nn.LayerNorm(out_channels)
         )
 
     def forward(self, x: torch.Tensor, target: torch.Tensor = None) -> torch.Tensor:
