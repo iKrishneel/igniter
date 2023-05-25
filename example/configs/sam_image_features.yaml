@@ -24,13 +24,13 @@ transforms:
 
 datasets:
   dataloader:
-    batch_size: 2
-    num_workers: 4
+    batch_size: 8
+    num_workers: 8
     shuffle: False
   coco:
     train:
-      root: "/root/krishneel/Downloads/datasets/coco/val2017"
-      annFile: "/root/krishneel/Downloads/datasets/coco/annotations/instances_val2017.json"
+      root: "/root/krishneel/Downloads/datasets/coco/train2017"
+      annFile: "/root/krishneel/Downloads/datasets/coco/annotations/instances_train2017.json"
     # train:
     #   root: "/root/krishneel/Downloads/datasets/coco/train2017"
     #   annFile: "/root/krishneel/Downloads/datasets/coco/annotations/instances_train2017.json"
@@ -49,7 +49,7 @@ io:
   s3_writer:
     engine: 's3_writer'
     bucket_name: 'sr-shokunin'
-    root: 'perception/sam/coco/val2017/features'
+    root: 'perception/sam/coco/train2017/features'
 
 build:
   sam:

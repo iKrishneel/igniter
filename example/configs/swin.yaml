@@ -53,12 +53,12 @@ solvers:
   snapshot: 5000
 
   SGD:
-    lr: 0.001
+    lr: 0.000001
     momentum: 0.5
   schedulers:
     StepLR:
-      step_size: 8
-      gamma: 0.1
+      step_size: 5
+      gamma: 0.01
 
 io:
   checkpoint:    
@@ -74,8 +74,8 @@ build:
       solver: "SGD"
       scheduler: "StepLR"
       epochs: 100
-    val:
-      epoch: 1
+    # val:
+    #   epoch: 1
       # metric: "accuracy"
     inference:
       transforms: "test"

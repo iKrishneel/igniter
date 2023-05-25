@@ -35,9 +35,12 @@ class SamPredictor(_SamPredictor):
             images = [image[..., ::-1] for image in images]
 
         input_images = [torch.as_tensor(self.transform.apply_image(image).transpose(2, 0, 1)) for image in images]
-        input_images = [self.model.preprocess(image) for image in input_images]
+        input_images = [self.model.preprocess(image.to(self.device)) for image in input_images]
         input_images_torch = torch.stack(input_images).to(self.device)
         return self.model.image_encoder(input_images_torch)
+
+    def to(self, device):
+        self.model.to(device)
 
     def children(self) -> Iterator['Module']:
         for name, module in self.model.named_children():
@@ -93,7 +96,6 @@ def sam_forward(engine, batch):
     for feature, data in zip(features, batch):
         id = data['id']
         fname = f'{str(int(id)).zfill(12)}'
-        print(fname)
         engine.s3_writer(feature, fname)
 
 

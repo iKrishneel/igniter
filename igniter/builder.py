@@ -44,7 +44,7 @@ class TrainerEngine(Engine):
             optimizer = idist.auto_optim(optimizer)
             attrs = dict(cfg.datasets.dataloader)
             dataloader = idist.auto_dataloader(
-                dataloader.dataset, collate_fn=build_func(attrs.pop('collate_fn', 'collate_fin')), **attrs
+                dataloader.dataset, collate_fn=build_func(attrs.pop('collate_fn', 'collate_fn')), **attrs
             )
 
         self._cfg = cfg
@@ -113,7 +113,7 @@ class TrainerEngine(Engine):
             self._writer.add_scalar(f'train/{key}', value, self.state.iteration)
 
     def checkpoint_handler(self) -> None:
-        if self._cfg.solvers.snapshot == 0:
+        if self._cfg.solvers.snapshot <= 0:
             return
 
         prefix = '%s'
@@ -162,7 +162,7 @@ class EvaluationEngine(Engine):
             model = idist.auto_model(model)
             attrs = dict(cfg.datasets.dataloader)
             dataloader = idist.auto_dataloader(
-                dataloader.dataset, collate_fn=build_func(attrs.pop('collate_fn', 'collate_fin')), **attrs
+                dataloader.dataset, collate_fn=build_func(attrs.pop('collate_fn', 'collate_fn')), **attrs
             )
 
         self._cfg = cfg
@@ -271,10 +271,7 @@ def build_io(cfg: DictConfig) -> Dict[str, Callable]:
 
 def build_func(func_name: str = 'default'):
     func = func_registry[func_name]
-    if func is None:
-        logger.info('Using default training function')
-        func = func_registry['default']
-    assert func, 'Training forward function is not defined'
+    assert func, f'Function {func_name} not found in registry \n{func_registry}'
     return func
 
 
