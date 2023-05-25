@@ -19,13 +19,16 @@ models:
 transforms:
   train: &train
     engine: "torchvision.transforms"
-    augs:
-      ToTensor:
-      Resize:
-        size: *size
-      Normalize:
-        mean: [0.485, 0.456, 0.406]
-        std: [0.229, 0.224, 0.225]
+    ResizeLongestSide:
+      size: 1024
+    ToTensor:
+    Normalize:
+      mean: [0.485, 0.456, 0.406]
+      std: [0.229, 0.224, 0.225]
+    PadToSize:
+      size: 1024
+    Resize:
+      size: *size      
   val:
     <<: *train
   test:

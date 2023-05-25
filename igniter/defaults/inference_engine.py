@@ -25,7 +25,9 @@ __all__ = [
 
 @engine_registry('default_inference')
 class InferenceEngine(object):
-    def __init__(self, config_file: Optional[Union[str, DictConfig]] = None, log_dir: Optional[str] = None, **kwargs):
+    def __init__(
+        self, config_file: Optional[Union[str, DictConfig]] = None, log_dir: Optional[str] = None, **kwargs
+    ) -> None:
         assert log_dir or config_file, 'Must provide either the log_dir or the config file'
 
         if log_dir and not osp.isdir(log_dir):
@@ -52,9 +54,6 @@ class InferenceEngine(object):
             with open_dict(cfg):
                 cfg.build[model_name(cfg)].weights = weights
 
-        self.model = build_model(cfg)
-        self.load_weights(cfg)
-
         self.transforms = kwargs.get('transforms', T.Compose([T.ToTensor()]))
         inference_attrs = cfg.build[model_name(cfg)].get('inference', None)
         if inference_attrs:
@@ -63,6 +62,9 @@ class InferenceEngine(object):
 
         self.device = cfg.get('device', 'cuda' if torch.cuda.is_available() else 'cpu')
         logger.info(f'Using device: {self.device}')
+
+        self.model = build_model(cfg)
+        self.load_weights(cfg)
         self.model.to(self.device)
         self.model.eval()
 
@@ -98,7 +100,7 @@ class InferenceEngine(object):
             return new_wpth
 
         wpth = _remap_keys(weight_dict[weight_key])
-        self.model.load_state_dict(wpth, strict=True)
+        self.model.load_state_dict(wpth, strict=False)
 
     def _load_weights_from_s3(self, path: str) -> Dict[str, Any]:
         bucket_name = path[5:].split('/')[0]

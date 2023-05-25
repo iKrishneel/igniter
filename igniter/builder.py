@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from typing import List, Dict, Any, Callable, Optional
+from typing import List, Dict, Any, Callable, Optional, Union
 
 import torch
 import torch.nn as nn
@@ -18,7 +18,14 @@ import ignite.distributed as idist
 
 from igniter.utils import is_distributed
 from igniter.logger import logger
-from igniter.registry import model_registry, dataset_registry, io_registry, func_registry, engine_registry
+from igniter.registry import (
+    model_registry,
+    dataset_registry,
+    io_registry,
+    func_registry,
+    engine_registry,
+    transform_registry,
+)
 
 MODES: List[str] = ['train', 'val', 'test']
 
@@ -184,17 +191,22 @@ def model_name(cfg: DictConfig) -> str:
     return cfg.build.model
 
 
-def build_transforms(cfg: DictConfig, mode: Optional[str] = None) -> Dict[str, Any]:
+def build_transforms(cfg: DictConfig, mode: Optional[str] = None) -> Union[List[Any], Dict[str, List[Any]]]:
     transforms = {}
     for key in cfg.transforms:
-        if mode and key != mode:
+        attrs = dict(cfg.transforms[key])
+        if mode and key != mode or attrs is None:
             continue
-        module = importlib.import_module(cfg.transforms[key].engine)
-        augs = cfg.transforms[key].augs
-        if augs is None:
-            transforms[key] = None
-            continue
-        transforms[key] = module.Compose([getattr(module, cls)(**(augs[cls]) if augs[cls] else {}) for cls in augs])
+
+        engine = attrs.pop('engine', 'torchvision.transforms')
+        module = importlib.import_module(engine)
+
+        transform_list = []
+        for obj, kwargs in attrs.items():
+            transform = transform_registry[obj] if obj in transform_registry else getattr(module, obj)
+            kwargs = kwargs or {}
+            transform_list.append(transform(**kwargs))
+        transforms[key] = module.Compose(transform_list)
 
     if mode:
         transforms = transforms[mode]
@@ -320,6 +332,13 @@ def validate_config(cfg: DictConfig):
     with open_dict(cfg):
         if cfg.get('solvers', None):
             cfg.solvers.snapshot = cfg.solvers.get('snapshot', -1)
+
+        trans_attrs = cfg.get('transforms', None)
+        if trans_attrs:
+            for key in trans_attrs:
+                if 'engine' in key:
+                    continue
+                cfg.transforms[key].engine = 'torchvision.transforms'
 
     return cfg
 

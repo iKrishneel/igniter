@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from io import BytesIO
 import time
 
 import torch
 import torch.nn as nn
+from torchvision.transforms import functional as TF
 from einops import rearrange
 
 import numpy as np
@@ -19,20 +20,21 @@ from segment_anything.modeling.common import LayerNorm2d
 from igniter import initiate
 from igniter.builder import trainer
 from igniter.datasets import S3CocoDataset
-from igniter.registry import model_registry, proc_registry, dataset_registry
+from igniter.registry import model_registry, func_registry, dataset_registry, transform_registry
 
 
 @model_registry('swin')
 class SwinTP4W7(nn.Module):
-    def __init__(self, in_size: List[int] = [896, 896], **kwargs: Optional[Dict[str, Any]]):
+    def __init__(self, in_size: List[int] = [896, 896], is_resize: bool = False, **kwargs: Optional[Dict[str, Any]]):
+        assert in_size[0] == in_size[1], f'Current Implementation only supports square image {in_size}'
         super(SwinTP4W7, self).__init__()
-
         model = swin_tiny_patch4_window7_224(pretrained=False, img_size=in_size)
         for attr in ['head']:
             delattr(model, attr)
 
         self.model = model
         self.in_size = list(in_size)
+        self.is_resize = is_resize
 
         out_channels = kwargs.get('out_channels', 256)
         target_size = kwargs.get('target_size', [64, 64])
@@ -46,10 +48,6 @@ class SwinTP4W7(nn.Module):
         )
 
     def forward(self, x: torch.Tensor, target: torch.Tensor = None) -> torch.Tensor:
-        _, _, h, w = x.shape
-        if [h, w] != self.in_size:
-            x = nn.functional.interpolate(x, self.in_size, mode='nearest')
-
         x = self.model.patch_embed(x)
         x = self.model.layers(x)
         x = self.model.norm(x)
@@ -71,7 +69,6 @@ class SwinTP4W7(nn.Module):
         kl_loss = nn.KLDivLoss(reduction='batchmean')
         x = nn.functional.log_softmax(x, dim=1)
         loss = kl_loss(x, nn.functional.softmax(target, dim=1))
-        # loss = nn.functional.l1_loss(x, target)
         return {'loss': loss}
 
 
@@ -98,17 +95,53 @@ class S3CocoDatasetSam(S3CocoDataset):
         contents = self.client.get(filename, False)
         buffer = BytesIO(contents)
         sam_feats = torch.load(buffer, map_location=torch.device('cpu'))
+
         return {'image': image, 'sam_feats': sam_feats, 'filename': filename}
 
 
-@proc_registry('collate_data')
+@transform_registry
+class ResizeLongestSide(nn.Module):
+    def __init__(self, size: int) -> None:
+        super(ResizeLongestSide, self).__init__()
+        self.size = size
+
+    def forward(self, image: np.ndarray) -> np.ndarray:
+        image = np.asarray(image) if not isinstance(image, np.ndarray) else image
+        target_size = self.get_preprocess_shape(image.shape[0], image.shape[1], self.size)
+        return np.array(TF.resize(TF.to_pil_image(image), target_size))
+
+    @staticmethod
+    def get_preprocess_shape(oldh: int, oldw: int, long_side_length: int) -> Tuple[int, int]:
+        """
+        Compute the output size given input size and target long side length.
+        """
+        scale = long_side_length * 1.0 / max(oldh, oldw)
+        newh, neww = oldh * scale, oldw * scale
+        neww = int(neww + 0.5)
+        newh = int(newh + 0.5)
+        return (newh, neww)
+
+
+@transform_registry
+class PadToSize(nn.Module):
+    def __init__(self, size: int):
+        super(PadToSize, self).__init__()
+        self.size = size
+
+    def forward(self, image: torch.Tensor) -> torch.Tensor:
+        h, w = image.shape[-2:]
+        padh, padw = self.size - h, self.size - w
+        return nn.functional.pad(image, (0, padw, 0, padh))
+
+
+@func_registry('collate_data')
 def collate_data(batches) -> List[torch.Tensor]:
     images = torch.stack([batch['image'] for batch in batches])
     targets = torch.stack([batch['sam_feats'] for batch in batches])
     return images, targets
 
 
-@proc_registry('accuracy')
+@func_registry('accuracy')
 def metric(engine, name):
     from ignite.metrics import Accuracy
 

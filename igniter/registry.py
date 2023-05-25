@@ -29,6 +29,9 @@ class Registry(object):
     def __getitem__(self, name: str):
         return self.__REGISTRY.get(name, None)
 
+    def __contains__(self, key: str):
+        return key in self.__REGISTRY.keys()
+
     def register(self, name_or_cls: Union[str, object] = None):
         return self(name_or_cls=name_or_cls)
 
@@ -48,6 +51,7 @@ dataset_registry = Registry(name='Dataset Registry')
 solver_registry = Registry(name='Solver Registry')
 io_registry = Registry(name='IO Registry')
 func_registry = Registry(name='Proc Registry')
+transform_registry = Registry(name='Transform Registry')
 
 # for backward compatibility
 proc_registry = func_registry

@@ -14,11 +14,10 @@ distributed:
 transforms:
   train: &trans
     engine: "torchvision.transforms"
-    augs:
-      ToTensor:
-      Normalize:
-        mean: [0.1307]
-        std: [0.3081]
+    ToTensor:
+    Normalize:
+      mean: [0.1307]
+      std: [0.3081]
   val:
     <<: *trans
 
