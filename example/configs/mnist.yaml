@@ -42,7 +42,7 @@ models:
   mnist:
 
 solvers:
-  engine: "torch.optim"
+  # engine: "torch.optim"
   snapshot: 10000
   SGD:
     lr: 0.01
@@ -70,6 +70,9 @@ build:
       epoch: 1
       # step: 256
       metric: "accuracy"
-        
 
   model: "mnist"
+
+flow:
+  - mnist
+  - mnist

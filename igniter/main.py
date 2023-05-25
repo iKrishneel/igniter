@@ -4,28 +4,14 @@ import os
 import argparse
 import inspect
 import functools
+from copy import deepcopy
+import subprocess
 
 import hydra
-from omegaconf import DictConfig
+from omegaconf import OmegaConf, DictConfig, open_dict
 
+from .logger import logger
 from .builder import trainer
-
-
-"""
-from .registry import func_registry
-
-
-@func_registry('default_argument_parser')
-def get_argument_parser(cfg: str = None) -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--config-file', type=str, default=cfg, required=cfg is None)
-    parser.add_argument('--weights', type=str, required=False, default=None)
-    parser.add_argument('--log_dir', type=str, required=False, default=None)
-    parser.add_argument('--test', action='store_true', default=False)
-    parser.add_argument('--image', type=str, required=False)
-    parser.add_argument('--viz', action='store_true', default=True)
-    return parser
-"""
 
 
 def guard(func):
@@ -33,19 +19,18 @@ def guard(func):
     def _wrapper(config_file: str = None):
         caller_frame = inspect.currentframe().f_back
         caller_module = inspect.getmodule(caller_frame).__name__
+
+        caller_filename = inspect.getframeinfo(caller_frame).filename
+        absolute_path = os.path.abspath(caller_filename)
+
         if caller_module == '__main__':
-            # args = func_registry['default_argument_parser'](config_file).parse_args()
-            # if args.test:
-            #     _test(args)
-            # else:
-            #     func(config_file, weights=args.weights)
-            func(config_file)
+            func(config_file, absolute_path)
 
     return _wrapper
 
 
 @guard
-def initiate(config_file: str):
+def initiate(config_file: str, caller_path: str = None):
     assert os.path.isfile(config_file), f'Config file not found {config_file}'
     config_name = config_file.split(os.sep)[-1]
     config_path = config_file.replace(config_name, '')
@@ -59,9 +44,43 @@ def initiate(config_file: str):
 
     @hydra.main(**kwargs)
     def _initiate(cfg: DictConfig):
-        _run(cfg)
+        run_flow(cfg, caller_path)
 
     _initiate()
+
+
+def run_flow(cfg: DictConfig, caller_path: str = None):
+    with open_dict(cfg):
+        flows = cfg.pop('flow', None)
+
+    if not flows:
+        return _run(cfg)
+
+    cfg_copy = deepcopy(cfg)
+
+    directory = '/tmp/igniter/flow/'
+    os.makedirs(directory, exist_ok=True)
+    for flow in flows:
+        with open_dict(cfg_copy):
+            cfg_copy.build.model = flow
+
+        filename = f'{flow}.yaml'
+        OmegaConf.save(cfg_copy, os.path.join(directory, filename))
+
+        logger.info(f'Starting workflow for model {flow}')
+        _exec(caller_path, directory, filename)
+        logger.info(f'{"-" * 80}')
+
+
+def _exec(caller_path: str, directory: str, filename: str):
+    import subprocess
+
+    assert os.path.isfile(caller_path)
+    assert os.path.isdir(directory)
+    assert os.path.isfile(os.path.join(directory, filename))
+
+    config_name = filename.split('.')[0]
+    subprocess.run(['python', caller_path, '--config-path', directory, '--config-name', config_name])
 
 
 def _run(cfg: DictConfig):

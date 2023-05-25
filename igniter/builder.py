@@ -232,16 +232,15 @@ def build_model(cfg: DictConfig) -> nn.Module:
     name = model_name(cfg)
     logger.info(f'Building network model {name}')
     cls_or_func = model_registry[name]
-    attrs = cfg.models[name]
-    if attrs:
-        return cls_or_func(**attrs)
-    return cls_or_func()
+    attrs = cfg.models[name] or {}
+    return cls_or_func(**attrs)
 
 
 def build_optim(cfg: DictConfig, model: nn.Module):
     name = cfg.build[model_name(cfg)].train.solver
     logger.info(f'Building optimizer {name}')
-    module = importlib.import_module(cfg.solvers.engine)
+    engine = cfg.solvers.get('engine', 'torch.optim')
+    module = importlib.import_module(engine)
     return getattr(module, name)(model.parameters(), **cfg.solvers[name])
 
 
