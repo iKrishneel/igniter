@@ -30,9 +30,9 @@ datasets:
     train:
       root: "/root/krishneel/Downloads/datasets/coco/train2017"
       annFile: "/root/krishneel/Downloads/datasets/coco/annotations/instances_train2017.json"
-    # train:
-    #   root: "/root/krishneel/Downloads/datasets/coco/train2017"
-    #   annFile: "/root/krishneel/Downloads/datasets/coco/annotations/instances_train2017.json"
+    val:
+      root: "/root/krishneel/Downloads/datasets/coco/val2017"
+      annFile: "/root/krishneel/Downloads/datasets/coco/annotations/instances_val2017.json"
 models:
   sam:
     name: "vit_h"    

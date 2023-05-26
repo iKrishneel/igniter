@@ -1,73 +1,22 @@
 #!/usr/bin/env python
 
 import pytest
-import os
-import os.path as osp
-import shutil
 import functools
 
 import torch
-import torch.nn as nn
 import numpy as np
-from omegaconf import OmegaConf
 
 from igniter.defaults import InferenceEngine
-from igniter.registry import model_registry
 
-ROOT: str = '/tmp/igniter/test_inference_engine/'
-WPATH: str = osp.join(ROOT, 'test_model.pth')
-os.makedirs(ROOT, exist_ok=True)
-
-
-@model_registry('test_model')
-class ExampleModel(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.conv1 = nn.Conv2d(3, 32, kernel_size=3, padding=1)
-        self.conv2 = nn.Conv2d(32, 1, kernel_size=3, padding=1)
-
-    def forward(self, x):
-        x = self.conv1(x)
-        x = nn.functional.relu(x)
-        x = self.conv2(x)
-        return torch.sigmoid(x)
-
-
-def setup_test():
-    model = ExampleModel()
-    torch.save({'model': model.state_dict()}, WPATH)
-
-    config = {
-        'device': 'cpu',
-        'models': {
-            'test_model': None,
-        },
-        'build': {'model': 'test_model', 'test_model': {'weights': WPATH}},
-    }
-
-    config_file = osp.join(ROOT, 'config.yaml')
-    config = OmegaConf.create(config)
-    OmegaConf.save(config, config_file)
-
-    return {'config_file': config_file, 'model': model}
-
-
-@pytest.fixture(scope='session', autouse=True)
-def config(request):
-    def clean_up():
-        shutil.rmtree(ROOT)
-
-    request.addfinalizer(clean_up)
-
-    return setup_test()
+from data.model import ExampleModel
+from conftest import ROOT
 
 
 def assert_all(func):
     @functools.wraps(func)
-    def wrapper(config):
-        ie = func(config)
+    def wrapper(model, config_file):
+        ie = func(model, config_file)
 
-        model = config['model']
         assert isinstance(ie.model, ExampleModel)
         assert len(ie.model.state_dict()) == len(model.state_dict())
 
@@ -78,33 +27,34 @@ def assert_all(func):
 
 
 @assert_all
-def _test_with_config(config):
-    return InferenceEngine(config_file=config['config_file'])
+def test_with_config(model, config_file):
+    return InferenceEngine(config_file=config_file)
 
 
 @assert_all
-def test_with_config_and_weights(config):
-    return InferenceEngine(config_file=config['config_file'], weights=WPATH)
+def test_with_config_and_weights(model, config_file):
+    wpth = '/tmp/igniter/tests/model.pth'
+    return InferenceEngine(config_file=config_file, weights=wpth)
 
 
 @assert_all
-def _test_with_logdir(config):
+def test_with_logdir(model, config_file):
     return InferenceEngine(log_dir=ROOT, extension='.pth')
 
 
-def _test_with_no_input(config):
+def test_with_no_input(model, config_file):
     with pytest.raises(AssertionError) as e:
         InferenceEngine()
     assert str(e.value) == 'Must provide either the log_dir or the config file'
 
 
-def _test_with_invalid_logdir(config):
+def test_with_invalid_logdir(model, config_file):
     with pytest.raises(IndexError) as e:
         InferenceEngine(log_dir='/tmp/')
     assert str(e.value) == 'list index out of range'
 
 
-def _test_with_invalid_config(config):
+def test_with_invalid_config(model, config_file):
     with pytest.raises(AssertionError) as e:
         InferenceEngine(config_file='/tmp/config.yaml')
     assert str(e.value) == 'Not Found: /tmp/config.yaml'
@@ -118,7 +68,7 @@ def _test_with_invalid_config(config):
     assert str(e.value) == 'Invalid config_file 2.0'
 
 
-def _test_with_input(config):
+def test_with_input(model, config_file):
     image = np.random.randint(0, 255, (224, 224, 3)).astype(np.uint8)
 
     ie = InferenceEngine(log_dir=ROOT, extension='.pth')

@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
-from typing import Callable
 from enum import Enum
 
 import torch
 from omegaconf import DictConfig
+
+from .logger import logger
 
 
 class Node(Enum):
@@ -23,6 +24,7 @@ def get_world_size(cfg: DictConfig) -> int:
 
 def is_distributed(cfg: DictConfig) -> bool:
     if not torch.cuda.is_available():
+        logger.warning('No CUDA Available!')
         return False
     return get_world_size(cfg) > 0 and torch.cuda.device_count() > 1 and cfg.distributed.nproc_per_node > 1
 
