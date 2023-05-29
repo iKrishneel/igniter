@@ -18,8 +18,13 @@ from ..utils import model_name
 __all__ = ['load_weights', 'load_weights_from_s3', 'load_weights_from_file']
 
 
-def load_weights(model: nn.Module, cfg: DictConfig, weight_key: str = 'model', **kwargs):
-    weight_path = cfg.build[model_name(cfg)].get('weights', None)
+def load_weights(model: nn.Module, cfg: DictConfig, **kwargs):
+
+    if isinstance(cfg, DictConfig):
+        weight_path = cfg.build[model_name(cfg)].get('weights', None)
+    else:
+        weight_path = cfg
+
     if not weight_path or len(weight_path) == 0:
         logger.warning('Weight is empty!'.upper())
         return
@@ -38,7 +43,22 @@ def load_weights(model: nn.Module, cfg: DictConfig, weight_key: str = 'model', *
             new_wpth[new_key] = weight_dict[key]
         return new_wpth
 
+    state_dict = model.state_dict()
+    for key in weight_dict:
+        if any([k in weight_dict[key] for k in ['state', 'param_groups']]):
+            continue
+        # TODO: check if current key has keys similar to state_dict
+        weight_key = key
+        break
+
     wpth = _remap_keys(weight_dict[weight_key])
+
+    for key in state_dict:
+        if key not in wpth or state_dict[key].shape == wpth[key].shape:
+            continue
+        logger.info(f'Removing shape missmatch key {key}')
+        wpth.pop(key)
+
     model.load_state_dict(wpth, strict=kwargs.get('strict', False))
 
 
