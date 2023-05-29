@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 
-from typing import Any, Dict, List, Type, Callable, Optional
-from dataclasses import dataclass, field
+from typing import Any, Type, Callable, Optional
+from dataclasses import dataclass
 
 import threading
 from io import BytesIO
-import concurrent.futures as cf
 
 import boto3
 from igniter.logger import logger
@@ -69,7 +68,7 @@ class S3Client(object):
             thread.start()
 
     def _write(self, buffer: BytesIO, path: str):
-        assert isinstance(buffer, BytesIO), f'Except type {type(ByteIO)} but got {type(buffer)}'
+        assert isinstance(buffer, BytesIO), f'Except type {type(BytesIO)} but got {type(buffer)}'
         assert len(path), 'Invalid path: {path}'
         response = self.client.put_object(Bucket=self.bucket_name, Key=path, Body=buffer.getvalue())
         return response

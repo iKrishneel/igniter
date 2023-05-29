@@ -77,7 +77,7 @@ class InferenceEngine(object):
         image = self.transforms(image)
 
         image = image[None, :] if len(image.shape) == 3 else image
-        return self.model(image.to(self.device)).squeeze(0).cpu()
+        return self.model(image.to(self.device))  # .squeeze(0).cpu()
 
     def load_weights(self, cfg: DictConfig, weight_key: str = 'model'):
         weight_path = cfg.build[model_name(cfg)].get('weights')

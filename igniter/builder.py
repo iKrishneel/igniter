@@ -91,10 +91,19 @@ class TrainerEngine(Engine):
 
         process_func = build_func(func_name)
         model = build_model(cfg)
+
+        # load weights if given
+        weights = cfg.build[model_name(cfg)].get('weights', None)
+        if weights:
+            logger.info(f'Loading weights from \n{weights}')
+            weights = torch.load(weights, map_location='cpu')
+            model.load_state_dict(weights, strict=False)
+
         optimizer = build_optim(cfg, model)
         io_ops = build_io(cfg)
         dataloader = build_dataloader(cfg, mode)
         scheduler = build_scheduler(cfg, optimizer)
+
         return cls(cfg, process_func, model, dataloader, optimizer=optimizer, io_ops=io_ops, scheduler=scheduler)
 
     def __call__(self) -> None:

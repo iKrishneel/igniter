@@ -84,3 +84,8 @@ build:
       transforms: "test"
 
   model: "swin"
+
+## TODO:
+# options:
+#   resume: False
+#   mode: "train"

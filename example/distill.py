@@ -17,6 +17,7 @@ from timm.models import swin_tiny_patch4_window7_224
 from segment_anything.modeling.common import LayerNorm2d
 
 from igniter import initiate
+from igniter.logger import logger
 from igniter.datasets import S3CocoDataset
 from igniter.registry import model_registry, func_registry, dataset_registry, transform_registry
 
@@ -41,8 +42,9 @@ class SwinTP4W7(nn.Module):
             [target_size, target_size] if not isinstance(target_size, list) or len(target_size) == 1 else target_size
         )
 
+        self.conv1 = nn.Conv2d(768, out_channels, kernel_size=1, bias=False)
         self.neck = nn.Sequential(
-            nn.Conv2d(768, out_channels, kernel_size=3, padding=1, bias=False), LayerNorm2d(out_channels)
+            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False), LayerNorm2d(out_channels)
         )
 
     def forward(self, x: torch.Tensor, target: torch.Tensor = None) -> torch.Tensor:
@@ -52,6 +54,9 @@ class SwinTP4W7(nn.Module):
 
         h1, w1 = self.in_size[1] // self.stride, self.in_size[0] // self.stride
         x = rearrange(x, 'b (h1 w1) c -> b c h1 w1', h1=h1, w1=w1)
+
+        x = self.conv1(x)
+        x = nn.functional.relu(x)
         x = nn.functional.interpolate(x, self.target_size, mode='bilinear')
         x = self.neck(x)
 

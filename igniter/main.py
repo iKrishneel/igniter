@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import os
-import argparse
 import inspect
 import functools
 from copy import deepcopy
@@ -73,8 +72,6 @@ def run_flow(cfg: DictConfig, caller_path: str = None):
 
 
 def _exec(caller_path: str, directory: str, filename: str):
-    import subprocess
-
     assert os.path.isfile(caller_path)
     assert os.path.isdir(directory)
     assert os.path.isfile(os.path.join(directory, filename))
@@ -105,6 +102,7 @@ def _test(cfg: DictConfig) -> None:
 
     pred = engine(image)
     pred = pred.cpu().numpy()
+    pred = pred[0] if len(pred.shape) == 4 else pred
 
     if pred.shape[0] > 3:
         im_grid = make_square_grid(pred)
