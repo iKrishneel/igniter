@@ -40,3 +40,7 @@ def convert_bytes_to_human_readable(nbytes: int) -> str:
         nbytes /= 1024
         i += 1
     return f'{nbytes:.2f} {suffixes[i]}'
+
+
+def model_name(cfg: DictConfig) -> str:
+    return cfg.build.model

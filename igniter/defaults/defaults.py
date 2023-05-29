@@ -2,10 +2,12 @@
 
 import torch
 from igniter.utils import convert_bytes_to_human_readable
-from igniter.registry import proc_registry
+from igniter.registry import func_registry
+
+__all__ = ['default_forward', 'default_val_forward', 'default_collate_fn']
 
 
-@proc_registry('default')
+@func_registry('default')
 def default_forward(engine, batch) -> None:
     engine._model.train()
     inputs, targets = batch
@@ -25,7 +27,7 @@ def default_forward(engine, batch) -> None:
     engine.state.metrics = losses
 
 
-@proc_registry('default_val_forward')
+@func_registry('default_val_forward')
 def default_val_forward(engine, batch) -> None:
     engine._model.eval()
     inputs, targets = batch
@@ -42,6 +44,6 @@ def default_val_forward(engine, batch) -> None:
     return {'y_pred': output, 'y_true': targets}
 
 
-@proc_registry('collate_fn')
+@func_registry('collate_fn')
 def default_collate_fn(data):
     return data

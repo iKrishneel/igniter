@@ -6,7 +6,7 @@ import functools
 import torch
 import numpy as np
 
-from igniter.defaults import InferenceEngine
+from igniter.engine import InferenceEngine
 
 from data.model import ExampleModel
 from conftest import ROOT
@@ -74,8 +74,9 @@ def test_with_input(model, config_file):
     ie = InferenceEngine(log_dir=ROOT, extension='.pth')
     y = ie(image)
 
-    assert len(y.shape) == 3
+    assert len(y.shape) == 4
 
     assert y.shape[0] == 1
-    assert y.shape[1] == 224
+    assert y.shape[1] == 1
     assert y.shape[2] == 224
+    assert y.shape[3] == 224

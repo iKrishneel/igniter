@@ -1,3 +1,3 @@
 #!/usr/bin/env python
 
-from .inference_engine import InferenceEngine  # NOQA: F401
+from .defaults import *  # NOQA: F401, F403
