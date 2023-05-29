@@ -1,0 +1,29 @@
+device: "cpu"
+
+transforms:
+  train: &train
+    engine: "torchvision.transforms"
+    # ResizeLongestSide:
+    #   size: 1024
+    ToTensor:
+    Normalize:
+      mean: [0.485, 0.456, 0.406]
+      std: [0.229, 0.224, 0.225]
+    # PadToSize:
+    #   size: 1024
+    Resize:
+      size: [1024, 1024]
+  val:
+    <<: *train
+  test:
+    <<: *train
+
+models:
+  test_model:
+
+build:
+  test_model:
+    weights: "/tmp/igniter/tests/model.pth"
+
+  model: "test_model"
+

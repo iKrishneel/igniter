@@ -9,6 +9,7 @@ import torch
 from omegaconf import OmegaConf
 
 from data.model import ExampleModel
+from data.transforms import *
 
 
 ROOT: str = '/tmp/igniter/tests'
@@ -21,7 +22,7 @@ def clean_up():
 
 @pytest.fixture(scope='session', autouse=True)
 def config_file():
-    config_path = osp.join(osp.dirname(osp.abspath(__file__)), 'data/config.yaml')
+    config_path = osp.join(osp.dirname(osp.abspath(__file__)), 'data/configs/config.yaml')
     return config_path
 
 

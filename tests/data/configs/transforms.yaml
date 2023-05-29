@@ -1,0 +1,26 @@
+transforms:
+  train:
+    engine: "torchvision.transforms"
+    ToTensor:
+    Normalize:
+      mean: [0.485, 0.456, 0.406]
+      std: [0.229, 0.224, 0.225]
+    Resize:
+      size: [1024, 1024]
+  val:
+    ResizeLongestSide:
+      size: 1024
+    PadToSize:
+      size: 1024
+  test:
+    engine: "torchvision.transforms"
+    ResizeLongestSide:
+      size: 1024
+    ToTensor:
+    Normalize:
+      mean: [0.485, 0.456, 0.406]
+      std: [0.229, 0.224, 0.225]
+    PadToSize:
+      size: 1024
+    Resize:
+      size: [1024, 1024]

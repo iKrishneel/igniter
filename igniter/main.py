@@ -104,9 +104,11 @@ def _test(cfg: DictConfig) -> None:
     image = cv.imread(cfg.image, cv.IMREAD_ANYCOLOR)
 
     pred = engine(image)
+    pred = pred.cpu().numpy()
 
-    print(pred.min(), pred.max())
-
-    im_grid = make_square_grid(pred.numpy())
-    plt.imshow(im_grid)
+    if pred.shape[0] > 3:
+        im_grid = make_square_grid(pred)
+        plt.imshow(im_grid, cmap='jet')
+    else:
+        plt.imshow(pred.transpose((1, 2, 0)))
     plt.show()
