@@ -90,17 +90,17 @@ class S3CocoDatasetSam(S3CocoDataset):
             time.sleep(0.1)
             try:
                 image, target = self._load(iid)
+                # temp
+                filename = f'perception/sam/coco/{self.root.split(os.sep)[-1]}/features/'
+                filename = filename + f'{str(iid).zfill(12)}.pt'
+
+                contents = self.client.get(filename, False)
+                buffer = BytesIO(contents)
+                sam_feats = torch.load(buffer, map_location=torch.device('cpu'))
                 break
             except Exception as e:
                 logger.warning(f'{e} for iid: {iid}')
                 iid = np.random.choice(iid)
-        # temp
-        filename = f'perception/sam/coco/{self.root.split(os.sep)[-1]}/features/'
-        filename = filename + f'{str(iid).zfill(12)}.pt'
-
-        contents = self.client.get(filename, False)
-        buffer = BytesIO(contents)
-        sam_feats = torch.load(buffer, map_location=torch.device('cpu'))
 
         return {'image': image, 'sam_feats': sam_feats, 'filename': filename}
 
