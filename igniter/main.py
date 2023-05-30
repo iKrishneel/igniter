@@ -96,7 +96,7 @@ def _test(cfg: DictConfig) -> None:
     from igniter.builder import build_engine
     from igniter.visualizer import make_square_grid
 
-    engine = build_engine(cfg, mode='inference')
+    engine = build_engine(cfg, mode='test')
 
     image = cv.imread(cfg.image, cv.IMREAD_ANYCOLOR)
 

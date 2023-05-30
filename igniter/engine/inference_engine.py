@@ -63,7 +63,7 @@ class InferenceEngine(object):
         logger.info(f'Using device: {self.device}')
 
         model = build_model(cfg)
-        load_weights(model, cfg)
+        load_weights(model, cfg, strict=True)
         model.to(self.device)
         model.eval()
         self.model = model
