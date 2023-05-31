@@ -10,11 +10,21 @@ for handler in logger.handlers.copy():
         logger.removeHandler(handler)
 
 
+format_style = '%(log_color)s%(asctime)s [%(filename)s:%(lineno)d] %(levelname)s: %(message)s%(reset)s'
+level = logging.INFO
+
 formatter = colorlog.ColoredFormatter(
-    '%(log_color)s%(asctime)s [%(filename)s:%(lineno)d] %(levelname)s: %(message)s%(reset)s',
+    format_style,
     log_colors={'DEBUG': 'cyan', 'INFO': 'green', 'WARNING': 'yellow', 'ERROR': 'red', 'CRITICAL': 'bold_red'},
 )
 
-console = logging.StreamHandler()
-console.setFormatter(formatter)
-logger.addHandler(console)
+console_handler = logging.StreamHandler()
+console_handler.setLevel(level)
+console_handler.setFormatter(formatter)
+
+file_handler = logging.FileHandler('/tmp/logs.log')
+file_handler.setLevel(level)
+file_handler.setFormatter(logging.Formatter(format_style))
+
+logger.addHandler(console_handler)
+logger.addHandler(file_handler)

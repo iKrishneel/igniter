@@ -22,7 +22,10 @@ from igniter.logger import logger
 from igniter.datasets import S3CocoDataset
 from igniter.registry import model_registry, func_registry, dataset_registry, transform_registry
 
-assert timm.__version__ == '0.6.11', f'This implementation deps timm version 0.6.11'
+from packaging import version
+
+version = version.parse(timm.__version__)
+assert version.minor == 6, f'Needs timm version 0.6.xx but found {timm.__version__}'
 
 
 @model_registry('swin')
@@ -45,7 +48,11 @@ class SwinTP4W7(nn.Module):
             [target_size, target_size] if not isinstance(target_size, list) or len(target_size) == 1 else target_size
         )
 
-        self.conv1 = nn.Conv2d(768, out_channels, kernel_size=1, bias=False)
+        hidden = out_channels // 1
+        self.conv1 = nn.Conv2d(768, hidden, kernel_size=1, bias=False)
+        self.dconv1 = nn.ConvTranspose2d(hidden, hidden, kernel_size=10, stride=2, bias=False)
+        self.conv2 = nn.Conv2d(hidden, out_channels, kernel_size=1, bias=False)
+
         self.neck = nn.Sequential(
             nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False), LayerNorm2d(out_channels)
         )
@@ -59,8 +66,10 @@ class SwinTP4W7(nn.Module):
         x = rearrange(x, 'b (h1 w1) c -> b c h1 w1', h1=h1, w1=w1)
 
         x = self.conv1(x)
-        x = nn.functional.relu(x)
-        x = nn.functional.interpolate(x, self.target_size, mode='bilinear')
+        x = self.dconv1(x)
+        x = self.conv2(x)
+        # x = nn.functional.relu(x)
+        # x = nn.functional.interpolate(x, self.target_size, mode='bilinear')
         x = self.neck(x)
 
         if target is not None:

@@ -19,7 +19,6 @@ __all__ = ['load_weights', 'load_weights_from_s3', 'load_weights_from_file']
 
 
 def load_weights(model: nn.Module, cfg: DictConfig, **kwargs):
-
     if isinstance(cfg, DictConfig):
         weight_path = cfg.build[model_name(cfg)].get('weights', None)
     else:

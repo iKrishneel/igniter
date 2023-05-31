@@ -44,3 +44,20 @@ def convert_bytes_to_human_readable(nbytes: int) -> str:
 
 def model_name(cfg: DictConfig) -> str:
     return cfg.build.model
+
+
+def loggable_model_info(model: torch.nn.Module) -> str:
+    from tabulate import tabulate
+
+    total_params, trainable_params = 0, 0
+    for param in model.parameters():
+        total_params += param.shape.numel()
+        trainable_params += param.shape.numel() if param.requires_grad else 0
+
+    header = ['Parameters', '#']
+    table = [
+        ['Non-Trainable', f'{total_params - trainable_params: ,}'],
+        ['Trainable', f'{trainable_params: ,}'],
+        ['Total', f'{total_params: ,}'],
+    ]
+    return tabulate(table, header, tablefmt='grid')

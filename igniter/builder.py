@@ -13,7 +13,7 @@ from ignite.engine import Engine, Events
 from ignite.handlers import BasicTimeProfiler
 import ignite.distributed as idist
 
-from igniter.utils import is_distributed, model_name
+from igniter.utils import is_distributed, model_name, loggable_model_info
 from igniter.logger import logger
 from igniter.registry import (
     model_registry,
@@ -189,6 +189,8 @@ def build_engine(cfg: DictConfig, mode: str = 'train') -> Callable:
 
     process_func = build_func(func_name)
     model = build_model(cfg)
+
+    logger.info('\n' + loggable_model_info(model))
 
     importlib.import_module('igniter.engine.utils').load_weights(model, cfg)
 
