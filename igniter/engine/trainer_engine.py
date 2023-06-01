@@ -15,7 +15,7 @@ from ignite.engine import Engine, Events
 from ignite.contrib.handlers import ProgressBar
 import ignite.distributed as idist
 
-from igniter.utils import is_distributed, model_name
+from igniter.utils import is_distributed, model_name, get_device
 from igniter.logger import logger
 from igniter.registry import io_registry, engine_registry
 
@@ -47,6 +47,8 @@ class TrainerEngine(Engine):
             dataloader = idist.auto_dataloader(
                 dataloader.dataset, collate_fn=build_func(attrs.pop('collate_fn', 'collate_fn')), **attrs
             )
+        else:
+            model = model.to(get_device(cfg))
 
         self._cfg = cfg
         self._model = model

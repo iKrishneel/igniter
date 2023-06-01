@@ -69,7 +69,8 @@ class S3CocoDataset(S3Dataset):
         image = Image.fromarray(image).convert('RGB')
         target = self.coco.loadAnns(self.coco.getAnnIds(iid))
 
-        image = self.transforms(image)
+        if self.transforms:
+            image = self.transforms(image)
         return image, target
 
     def __len__(self) -> int:

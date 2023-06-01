@@ -28,9 +28,10 @@ MODES: List[str] = ['train', 'val', 'test']
 
 
 def build_transforms(cfg: DictConfig, mode: Optional[str] = None) -> Union[List[Any], Dict[str, List[Any]]]:
-    transforms = {}
-    for key in cfg.transforms:
-        attrs = dict(cfg.transforms[key])
+    transforms = {mode: [] for mode in MODES}
+    transforms_cfg = cfg.get('transforms', {})
+    for key in transforms_cfg:
+        attrs = dict(transforms_cfg[key])
         if mode and key != mode or attrs is None:
             continue
 

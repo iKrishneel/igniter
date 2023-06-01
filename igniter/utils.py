@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
+import os.path as osp
 from enum import Enum
 
 import torch
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 
 from .logger import logger
 
@@ -29,6 +30,14 @@ def is_distributed(cfg: DictConfig) -> bool:
     return get_world_size(cfg) > 0 and torch.cuda.device_count() > 1 and cfg.distributed.nproc_per_node > 1
 
 
+def get_device(cfg: DictConfig) -> torch.device:
+    device = cfg.get('device', 'cuda')
+    if device == 'cuda' and not torch.cuda.is_available():
+        logger.warning(f'{device} not available')
+        device = 'cpu'
+    return torch.device(device)
+
+
 def check_str(string: str, msg: str = 'String is empty!'):
     assert len(string) > 0, msg
 
@@ -44,6 +53,11 @@ def convert_bytes_to_human_readable(nbytes: int) -> str:
 
 def model_name(cfg: DictConfig) -> str:
     return cfg.build.model
+
+
+def get_config(filename: str) -> DictConfig:
+    assert osp.isfile(filename), f'Config file {filename} not found!'
+    return OmegaConf.load(filename)
 
 
 def loggable_model_info(model: torch.nn.Module) -> str:
