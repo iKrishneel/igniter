@@ -50,8 +50,8 @@ class SwinTP4W7(nn.Module):
 
         hidden = out_channels // 1
         self.conv1 = nn.Conv2d(768, hidden, kernel_size=1, bias=False)
-        self.dconv1 = nn.ConvTranspose2d(hidden, hidden, kernel_size=10, stride=2, bias=False)
-        self.conv2 = nn.Conv2d(hidden, out_channels, kernel_size=1, bias=False)
+        # self.dconv1 = nn.ConvTranspose2d(hidden, hidden, kernel_size=10, stride=2, bias=False)
+        # self.conv2 = nn.Conv2d(hidden, out_channels, kernel_size=1, bias=False)
 
         self.neck = nn.Sequential(
             nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False), LayerNorm2d(out_channels)
@@ -66,10 +66,10 @@ class SwinTP4W7(nn.Module):
         x = rearrange(x, 'b (h1 w1) c -> b c h1 w1', h1=h1, w1=w1)
 
         x = self.conv1(x)
-        x = self.dconv1(x)
-        x = self.conv2(x)
-        # x = nn.functional.relu(x)
-        # x = nn.functional.interpolate(x, self.target_size, mode='bilinear')
+        # x = self.dconv1(x)
+        # x = self.conv2(x)
+        x = nn.functional.relu(x)
+        x = nn.functional.interpolate(x, self.target_size, mode='bilinear')
         x = self.neck(x)
 
         if target is not None:
