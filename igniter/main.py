@@ -67,17 +67,20 @@ def run_flow(cfg: DictConfig, caller_path: str = None):
         OmegaConf.save(cfg_copy, os.path.join(directory, filename))
 
         logger.info(f'Starting workflow for model {flow}')
-        _exec(caller_path, directory, filename)
+        if not _exec(caller_path, directory, filename):
+            raise RuntimeError(f'Process {flow} didnt complete successfully')
         logger.info(f'{"-" * 80}')
 
 
-def _exec(caller_path: str, directory: str, filename: str):
+def _exec(caller_path: str, directory: str, filename: str) -> bool:
     assert os.path.isfile(caller_path)
     assert os.path.isdir(directory)
     assert os.path.isfile(os.path.join(directory, filename))
 
     config_name = filename.split('.')[0]
-    subprocess.run(['python', caller_path, '--config-path', directory, '--config-name', config_name])
+    process = subprocess.run(['python', caller_path, '--config-path', directory, '--config-name', config_name])
+
+    return process.returncode == 0
 
 
 def _run(cfg: DictConfig):

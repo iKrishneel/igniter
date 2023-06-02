@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 
 import importlib
 import os
-from omegaconf import DictConfig, open_dict
+from omegaconf import DictConfig, OmegaConf, open_dict
 
 from ignite.engine import Engine, Events
 from ignite.handlers import BasicTimeProfiler
@@ -184,6 +184,9 @@ def build_engine(cfg: DictConfig, mode: str = 'train') -> Callable:
 
     assert mode in MODES, f'Mode must be one of {MODES} but got {mode}'
     os.makedirs(cfg.workdir.path, exist_ok=True)
+
+    yaml_data = OmegaConf.to_yaml(cfg)
+    logger.info(f'\033[32m\n{yaml_data} \033[0m')
 
     mode_attrs = cfg.build[model_name(cfg)].get(mode, None)
     func_name = mode_attrs.get('func', 'default') if mode_attrs else 'default'
