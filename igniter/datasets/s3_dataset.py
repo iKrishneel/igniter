@@ -58,7 +58,10 @@ class S3CocoDataset(S3Dataset):
         iid = self.ids[index]
         while True:
             try:
-                return self._load(iid)
+                image, target = self._load(iid)
+                if self.transforms:
+                    image = self.transforms(image)
+                return image, target
             except Exception as e:
                 logger.warning(f'{e} for iid: {iid}')
                 iid = np.random.choice(iid)
@@ -68,9 +71,6 @@ class S3CocoDataset(S3Dataset):
         image = self.load_image(file_name)
         image = Image.fromarray(image).convert('RGB')
         target = self.coco.loadAnns(self.coco.getAnnIds(iid))
-
-        if self.transforms:
-            image = self.transforms(image)
         return image, target
 
     def __len__(self) -> int:
