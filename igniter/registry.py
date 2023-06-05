@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from dataclasses import dataclass, field
-from typing import Dict, Union, Optional
+from typing import Dict, Union, Optional, Callable
 
 from tabulate import tabulate
 
@@ -35,8 +35,11 @@ class Registry(object):
     def register(self, name_or_cls: Union[str, object] = None):
         return self(name_or_cls=name_or_cls)
 
-    def get(self, name: str):
+    def get(self, name: str) -> Callable:
         return self[name]
+
+    def remove(self, name: str) -> Callable:
+        return self.__REGISTRY.pop(name, None)
 
     def __repr__(self):
         title = f'Registry for {self.name}\n'
