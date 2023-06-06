@@ -88,28 +88,14 @@ def _run(cfg: DictConfig):
     if mode == 'train':
         trainer(cfg)
     elif mode in ['val', 'test', 'inference']:
-        _test(cfg)
+        from igniter.registry import func_registry
+        from igniter.utils import model_name
+
+        func_name = cfg.build.get(model_name(cfg)).inference.get('func', 'default_test')
+        logger.info(f'Inference function {func_name}')
+
+        func = func_registry[func_name]
+        assert func is not None
+        func(cfg)
     else:
         raise TypeError(f'Unknown mode {mode}')
-
-
-def _test(cfg: DictConfig) -> None:
-    import matplotlib.pyplot as plt
-    import cv2 as cv
-    from igniter.builder import build_engine
-    from igniter.visualizer import make_square_grid
-
-    engine = build_engine(cfg, mode='test')
-
-    image = cv.imread(cfg.image, cv.IMREAD_ANYCOLOR)
-
-    pred = engine(image)
-    pred = pred.cpu().numpy()
-    pred = pred[0] if len(pred.shape) == 4 else pred
-
-    if pred.shape[0] > 3:
-        im_grid = make_square_grid(pred)
-        plt.imshow(im_grid, cmap='jet')
-    else:
-        plt.imshow(pred.transpose((1, 2, 0)))
-    plt.show()

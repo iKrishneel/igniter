@@ -58,7 +58,8 @@ def load_weights(model: nn.Module, cfg: DictConfig, **kwargs):
         logger.info(f'Removing shape missmatch key {key}')
         wpth.pop(key)
 
-    model.load_state_dict(wpth, strict=kwargs.get('strict', False))
+    load_status = model.load_state_dict(wpth, strict=kwargs.get('strict', False))
+    logger.info(f'{load_status}')
 
 
 def load_weights_from_s3(path: str) -> Dict[str, Any]:

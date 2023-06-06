@@ -2,7 +2,7 @@
 
 from glob import glob
 import os.path as osp
-from typing import Union, Optional
+from typing import Any, Dict, Union, Optional
 
 import numpy as np
 from PIL import Image
@@ -57,13 +57,14 @@ class InferenceEngine(object):
         inference_attrs = cfg.build[model_name(cfg)].get('inference', None)
         if inference_attrs:
             if inference_attrs.get('transforms', None):
-                self.transforms = build_transforms(cfg)[inference_attrs.transforms]
+                transforms = build_transforms(cfg, inference_attrs.transforms)
+                self.transforms = transforms if len(transforms) > 0 else self.transforms
 
         self.device = cfg.get('device', 'cuda' if torch.cuda.is_available() else 'cpu')
         logger.info(f'Using device: {self.device}')
 
         model = build_model(cfg)
-        load_weights(model, cfg, strict=True)
+        load_weights(model, cfg, strict=kwargs.get('strict', True))
         model.to(self.device)
         model.eval()
         self.model = model
@@ -71,10 +72,14 @@ class InferenceEngine(object):
         logger.info('Inference Engine is Ready!')
 
     @torch.no_grad()
-    def __call__(self, image: Union[np.ndarray, Image.Image]):
+    def __call__(self, image: Union[np.ndarray, Image.Image, torch.Tensor], **kwargs: Dict[str, Any]):
         assert image is not None, 'Input image is required'
-        image = Image.fromarray(image) if not isinstance(image, Image.Image) else image
-        image = self.transforms(image)
+
+        if not isinstance(image, torch.Tensor):
+            image = Image.fromarray(image) if not isinstance(image, Image.Image) else image
+
+        if self.transforms:
+            image = self.transforms(image)
 
         image = image[None, :] if len(image.shape) == 3 else image
-        return self.model(image.to(self.device))  # .squeeze(0).cpu()
+        return self.model(image.to(self.device), **kwargs)  # .squeeze(0).cpu()

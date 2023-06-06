@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 import torch
+from omegaconf import DictConfig
+
 from igniter.utils import convert_bytes_to_human_readable
 from igniter.registry import func_registry
 
@@ -47,3 +49,26 @@ def default_val_forward(engine, batch) -> None:
 @func_registry('collate_fn')
 def default_collate_fn(data):
     return data
+
+
+@func_registry('default_test')
+def default_test(cfg: DictConfig) -> None:
+    import matplotlib.pyplot as plt
+    import cv2 as cv
+    from igniter.builder import build_engine
+    from igniter.visualizer import make_square_grid
+
+    engine = build_engine(cfg, mode='test')
+
+    image = cv.imread(cfg.image, cv.IMREAD_ANYCOLOR)
+
+    pred = engine(image)
+    pred = pred.cpu().numpy()
+    pred = pred[0] if len(pred.shape) == 4 else pred
+
+    if pred.shape[0] > 3:
+        im_grid = make_square_grid(pred)
+        plt.imshow(im_grid, cmap='jet')
+    else:
+        plt.imshow(pred.transpose((1, 2, 0)))
+    plt.show()
