@@ -193,7 +193,7 @@ def build_engine(cfg: DictConfig, mode: str = 'train') -> Callable:
 
     process_func = build_func(func_name)
     model = build_model(cfg)
-
+    logger.info(f'\n{model}')
     logger.info('\n' + loggable_model_info(model))
 
     importlib.import_module('igniter.engine.utils').load_weights(model, cfg)

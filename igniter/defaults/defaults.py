@@ -69,6 +69,8 @@ def default_test(cfg: DictConfig) -> None:
     if pred.shape[0] > 3:
         im_grid = make_square_grid(pred)
         plt.imshow(im_grid, cmap='jet')
-    else:
+    elif pred.shape[0] == 3:
         plt.imshow(pred.transpose((1, 2, 0)))
+    else:
+        plt.imshow(pred.transpose((1, 2, 0)), cmap='jet')
     plt.show()

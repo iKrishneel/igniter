@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from typing import Callable
 import os
 import inspect
 import functools
@@ -13,7 +14,7 @@ from .logger import logger
 from .builder import trainer
 
 
-def guard(func):
+def guard(func: Callable):
     @functools.wraps(func)
     def _wrapper(config_file: str = None):
         caller_frame = inspect.currentframe().f_back
@@ -29,7 +30,7 @@ def guard(func):
 
 
 @guard
-def initiate(config_file: str, caller_path: str = None):
+def initiate(config_file: str, caller_path: str = None) -> None:
     assert os.path.isfile(config_file), f'Config file not found {config_file}'
     config_name = config_file.split(os.sep)[-1]
     config_path = config_file.replace(config_name, '')
@@ -48,7 +49,7 @@ def initiate(config_file: str, caller_path: str = None):
     _initiate()
 
 
-def run_flow(cfg: DictConfig, caller_path: str = None):
+def run_flow(cfg: DictConfig, caller_path: str = None) -> None:
     with open_dict(cfg):
         flows = cfg.pop('flow', None)
 
@@ -83,7 +84,7 @@ def _exec(caller_path: str, directory: str, filename: str) -> bool:
     return process.returncode == 0
 
 
-def _run(cfg: DictConfig):
+def _run(cfg: DictConfig) -> None:
     mode = cfg.build.get('mode', 'train')
     if mode == 'train':
         trainer(cfg)
@@ -95,7 +96,7 @@ def _run(cfg: DictConfig):
         logger.info(f'Inference function {func_name}')
 
         func = func_registry[func_name]
-        assert func is not None
+        assert func is not None, f'{func_name} not found! Registerd are \n{func_registry}'
         func(cfg)
     else:
         raise TypeError(f'Unknown mode {mode}')

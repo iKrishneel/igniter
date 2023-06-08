@@ -58,7 +58,7 @@ class InferenceEngine(object):
         if inference_attrs:
             if inference_attrs.get('transforms', None):
                 transforms = build_transforms(cfg, inference_attrs.transforms)
-                self.transforms = transforms if len(transforms) > 0 else self.transforms
+                self.transforms = transforms if isinstance(transforms, T.Compose) else self.transforms
 
         self.device = cfg.get('device', 'cuda' if torch.cuda.is_available() else 'cpu')
         logger.info(f'Using device: {self.device}')
