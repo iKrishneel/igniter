@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from typing import List, Dict, Any, Callable, Optional, Union
+import inspect
 
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -41,8 +42,10 @@ def build_transforms(cfg: DictConfig, mode: Optional[str] = None) -> Union[List[
         transform_list = []
         for obj, kwargs in attrs.items():
             transform = transform_registry[obj] if obj in transform_registry else getattr(module, obj)
-            kwargs = kwargs or {}
-            transform_list.append(transform(**kwargs))
+            if inspect.isclass(transform):
+                kwargs = kwargs or {}
+                transform = transform(**kwargs)
+            transform_list.append(transform)
         transforms[key] = module.Compose(transform_list)
 
     if mode:
