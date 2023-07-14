@@ -11,6 +11,14 @@ from igniter.registry import Registry
 s3_utils_registry = Registry()
 
 
+lut = {
+    'image': 'decode_pil_image',
+    'image/jpeg': 'decode_pil_image',
+    'json': 'decode_json',
+    'torch': 'decode_torch_weights',
+}
+
+
 @s3_utils_registry
 def decode_cv_image(content) -> np.ndarray:
     import cv2 as cv

@@ -32,8 +32,8 @@ def test_s3_client_cv_image(image, mocker):
     m = mocker.patch('igniter.io.s3_client.S3Client.get', mock_get)
     m = mocker.patch('igniter.io.s3_client.S3Client._read', mock_read)
 
-    client = S3Client('mybucket', decoder_func='decode_cv_image')
-    response = client('folder')
+    client = S3Client('mybucket')
+    response = client('folder', decoder='decode_cv_image')
 
     assert image.shape == response.shape
 
@@ -51,9 +51,11 @@ def test_s3_client_pil_image(image, mocker):
     m = mocker.patch('igniter.io.s3_client.S3Client.get', mock_get)
     m = mocker.patch('igniter.io.s3_client.S3Client._read', mock_read)
 
-    client = S3Client('mybucket', decoder_func='decode_pil_image')
+    client = S3Client('mybucket')
     response = client('folder')
+    assert image.size == response.size
 
+    response = client('folder', decoder='decode_pil_image')
     assert image.size == response.size
 
 
@@ -74,9 +76,8 @@ def test_s3_client_json(mocker):
     m = mocker.patch('igniter.io.s3_client.S3Client.get', mock_get)
     m = mocker.patch('igniter.io.s3_client.S3Client._read', mock_read)
 
-    client = S3Client('mybucket', decoder_func='decode_json')
-    response = client('folder')
-
+    client = S3Client('mybucket')
+    response = client('folder', decoder='decode_json')
     assert data == response
 
 
@@ -95,8 +96,8 @@ def test_s3_client_torch_weights(mocker):
     m = mocker.patch('igniter.io.s3_client.S3Client.get', mock_get)
     m = mocker.patch('igniter.io.s3_client.S3Client._read', mock_read)
 
-    client = S3Client('mybucket', decoder_func='decode_torch_weights')
-    response = client('folder')
+    client = S3Client('mybucket')
+    response = client('folder', decoder='decode_torch_weights')
 
     for key in state_dict:
         assert torch.all(state_dict[key] == response[key])

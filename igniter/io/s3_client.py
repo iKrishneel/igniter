@@ -1,28 +1,25 @@
 #!/usr/bin/env python
 
-from typing import Any, Type, Callable, Optional
+from typing import Any, Type, Callable, Optional, Union
 from dataclasses import dataclass
 
 import threading
 from io import BytesIO
 
 import boto3
+from botocore.exceptions import ClientError
 from igniter.logger import logger
 
-from .s3_utils import s3_utils_registry
+from .s3_utils import s3_utils_registry, lut
 
 
 @dataclass
 class S3Client(object):
     bucket_name: str
-    decoder_func: Optional[Callable[[str], None]] = None
 
     def __post_init__(self) -> None:
         assert len(self.bucket_name) > 0, f'Invalid bucket name'
         logger.info(f'Data source is s3://{self.bucket_name}')
-
-        if self.decoder_func and isinstance(self.decoder_func, str):
-            self.decoder_func = s3_utils_registry[self.decoder_func]
 
     def get(self, filename: str, ret_raw: bool = True):
         s3_file = self.client.get_object(Bucket=self.bucket_name, Key=filename)
@@ -30,8 +27,8 @@ class S3Client(object):
             return s3_file
         return self._read(s3_file)
 
-    def __call__(self, filename: str) -> Type[Any]:
-        return self.load_file(filename)
+    def __call__(self, filename: str, decoder: Optional[Union[Callable, str]] = None) -> Type[Any]:
+        return self.load_file(filename, decoder)
 
     def __getitem__(self, filename: str) -> Type[Any]:
         return self(filename)
@@ -39,24 +36,22 @@ class S3Client(object):
     def __reduce__(self):
         return (self.__class__, (self.bucket_name,))
 
-    def load_file(self, filename: str):
+    def load_file(self, filename: str, decoder: Optional[Union[Callable, str]] = None):
         assert len(filename) > 0, f'Invalid filename'
-        return self.decode_file(self.get(filename))
+        try:
+            return self.decode_file(self.get(filename), decoder)
+        except ClientError as e:
+            print(f'{e}\nFile Not Found! {filename}')
+            return {}
 
-    def decode_file(self, s3_file) -> Type[Any]:
+    def decode_file(self, s3_file, decoder: Optional[Union[Callable, str]] = None) -> Type[Any]:
         content_type = s3_file['ResponseMetadata']['HTTPHeaders']['content-type']
         content = self._read(s3_file)
 
-        func = self.decoder_func
-        if not self.decoder_func:
-            # TODO: Remove hardcoded conditions
-            if 'image' in content_type:
-                func_name = 'decode_cv_image'
-            elif 'json' in content_type:
-                func_name = 'decode_json'
-            else:
-                raise TypeError(f'Unknown file type {content_type}')
-            func = s3_utils_registry[func_name]
+        decoder = lut.get(content_type, None) if not decoder else decoder
+        assert decoder, f'Decoder for content type {content_type} is unknown'
+        func = s3_utils_registry[decoder]
+
         assert func, 'Unknown decoder function'
         return func(content)
 
@@ -75,6 +70,9 @@ class S3Client(object):
 
     def _read(self, s3_file):
         return s3_file['Body'].read()
+
+    def ls(self, directory: str):
+        return self.client.list_objects_v2(Bucket=self.bucket_name, Prefix=directory)
 
     @property
     def client(self):
