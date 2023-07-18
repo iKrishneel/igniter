@@ -84,13 +84,18 @@ def build_optim(cfg: DictConfig, model: nn.Module):
     return getattr(module, name)(model.parameters(), **cfg.solvers[name])
 
 
-def build_scheduler(cfg: DictConfig, optimizer: nn.Module):
+def build_scheduler(cfg: DictConfig, optimizer: nn.Module, dataloader: DataLoader):
     name = cfg.build[model_name(cfg)].train.get('scheduler', None)
     if not name:
         return
 
     module = importlib.import_module('torch.optim.lr_scheduler')
-    return getattr(module, name)(optimizer=optimizer, **cfg.solvers.schedulers[name])
+    args = dict(cfg.solvers.schedulers[name])
+
+    if name == 'OneCycleLR':
+        args['total_steps'] = len(dataloader)
+
+    return getattr(module, name)(optimizer=optimizer, **args)
 
 
 def add_profiler(engine: Engine, cfg: DictConfig):
@@ -207,7 +212,7 @@ def build_engine(cfg: DictConfig, mode: str = 'train') -> Callable:
         optimizer = build_optim(cfg, model)
         io_ops = build_io(cfg)
         dataloader = build_dataloader(cfg, mode)
-        scheduler = build_scheduler(cfg, optimizer)
+        scheduler = build_scheduler(cfg, optimizer, dataloader)
 
         engine = engine_registry['default_trainer'](
             cfg, process_func, model, dataloader, optimizer=optimizer, io_ops=io_ops, scheduler=scheduler
