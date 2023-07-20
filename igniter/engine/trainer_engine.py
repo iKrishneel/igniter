@@ -67,6 +67,13 @@ class TrainerEngine(Engine):
 
         self._writer = io_registry['summary_writer'](log_dir=self.log_dir)
 
+        # TODO: better way to handle the event type
+        scheduler_event = (
+            Events.ITERATION_COMPLETED
+            if isinstance(self._scheduler, torch.optim.lr_scheduler.OneCycleLR)
+            else Events.EPOCH_COMPLETED
+        )
+
         self.add_event_handler(Events.EPOCH_COMPLETED, self.scheduler)
         self.add_event_handler(Events.ITERATION_COMPLETED, self.summary)
 
