@@ -73,8 +73,7 @@ class TrainerEngine(Engine):
             if isinstance(self._scheduler, torch.optim.lr_scheduler.OneCycleLR)
             else Events.EPOCH_COMPLETED
         )
-
-        self.add_event_handler(Events.EPOCH_COMPLETED, self.scheduler)
+        self.add_event_handler(scheduler_event, self.scheduler)
         self.add_event_handler(Events.ITERATION_COMPLETED, self.summary)
 
         self.checkpoint_handler()
