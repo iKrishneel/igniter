@@ -93,7 +93,7 @@ def build_scheduler(cfg: DictConfig, optimizer: nn.Module, dataloader: DataLoade
     args = dict(cfg.solvers.schedulers[name])
 
     if name == 'OneCycleLR':
-        args['total_steps'] = len(dataloader)
+        args['total_steps'] = len(dataloader) - 1
 
     return getattr(module, name)(optimizer=optimizer, **args)
 
