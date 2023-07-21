@@ -3,9 +3,11 @@
 from typing import Any, Type, Callable, Optional, Union
 from dataclasses import dataclass
 
+import os
 import threading
 from io import BytesIO
 
+from tqdm import tqdm
 import boto3
 from botocore.exceptions import ClientError
 from igniter.logger import logger
@@ -35,6 +37,37 @@ class S3Client(object):
 
     def __reduce__(self):
         return (self.__class__, (self.bucket_name,))
+
+    def download(self, file_key: str, filename: str):
+        """
+        Downloads a file from an S3 bucket and saves it locally, tracking the progress.
+
+        :param file_key: The key of the file to download within the bucket.
+        :param filename: The local path where the file will be saved.
+        """
+        if os.path.isdir(filename):
+            filename = os.path.join(filename, file_key.split('/')[-1])
+
+        def last_n(text: str, n: int = 24):
+            n = max(1, n)
+            return '...' + text[-n:] if len(text) > n else text
+
+        try:
+            object_info = self.client.get_object(Bucket=self.bucket_name, Key=file_key)
+            total_bytes = object_info['ContentLength']
+
+            with tqdm(
+                total=total_bytes, unit='B', unit_scale=True, unit_divisor=1024, desc=f'Downloading {last_n(file_key)}'
+            ) as progress_bar:
+                def progress_callback(bytes_transferred):
+                    progress_bar.update(bytes_transferred)
+                self.client.download_file(self.bucket_name, file_key, filename, Callback=progress_callback)
+        except KeyboardInterrupt:
+            logger.info('Download interrupted. Cleaning up ...')
+            if os.path.isfile(filename):
+                os.remove(filename)
+        except Exception as e:
+            logger.error(f'Error downloading file "{file_key}": {e}')
 
     def load_file(self, filename: str, decoder: Optional[Union[Callable, str]] = None):
         assert len(filename) > 0, f'Invalid filename'

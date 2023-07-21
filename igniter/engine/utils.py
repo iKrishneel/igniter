@@ -29,7 +29,7 @@ def load_weights(model: nn.Module, cfg: DictConfig, **kwargs):
         return
 
     if 's3://' in weight_path:
-        decoder = kwargs.get('decoder', 'decode_torch_weights')
+        decoder = kwargs.get('decoder', None)
         weight_dict = load_weights_from_s3(weight_path, decoder)
     else:
         weight_dict = load_weights_from_file(weight_path)
@@ -63,7 +63,7 @@ def load_weights(model: nn.Module, cfg: DictConfig, **kwargs):
     logger.info(f'{load_status}')
 
 
-def load_weights_from_s3(path: str, decoder: str = 'decode_torch_weights') -> Dict[str, Any]:
+def load_weights_from_s3(path: str, decoder: str = None) -> Dict[str, Any]:
     bucket_name = path[5:].split('/')[0]
     assert len(bucket_name) > 0, 'Invalid bucket name'
 
@@ -75,13 +75,16 @@ def load_weights_from_s3(path: str, decoder: str = 'decode_torch_weights') -> Di
         return load_weights_from_file(root)
 
     s3_client = S3Client(bucket_name=bucket_name)
-
-    logger.info(f'Loading weights from {path}')
-    weights = s3_client(path, decoder=decoder)
-
-    # save weights to cache
     os.makedirs('/'.join(root.split('/')[:-1]), exist_ok=True)
-    torch.save(weights, root)
+    
+    logger.info(f'Loading weights from {path}')
+    if decoder:
+        weights = s3_client(path, decoder=decoder)
+        torch.save(weights, root)
+    else:
+        s3_client.download(path, root)
+        weights = load_weights_from_file(root)
+
     logger.info(f'Saved model weight to cache: {root}')
 
     return weights
