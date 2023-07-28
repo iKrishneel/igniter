@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
 from typing import Any, Dict, Union
+from dataclasses import dataclass
+
+import os
 import os.path as osp
 import torch
 from io import BytesIO
@@ -38,3 +41,32 @@ class S3IO(S3Client):
         torch.save(data, buffer)
         path = osp.join(self.root, filename)
         self.write(buffer, path, False)
+
+
+@io_registry('file_writer')
+@dataclass
+class FileIO(object):
+    root: str
+    extension: str = '.pt'
+
+    def __post_init__(self):
+        assert len(self.root) > 0, f'Directory {self.root} is not valid!'
+
+    @classmethod
+    def build(cls, io_cfg):
+        return cls(root=io_cfg.root)
+
+    def __call__(self, data: Any, filename: str):
+        assert len(filename) > 0, 'Invalid filename'
+
+        filename = osp.join(self.root, filename)
+        os.makedirs(osp.dirname(filename), exist_ok=True)
+
+        if self.extension not in filename:
+            filename += self.extension
+
+        # TODO: Check the data type and use appropriate writer
+        self._save_tensors(data, filename)
+
+    def _save_tensors(self, data: Union[Dict[str, Any], torch.Tensor], filename: str):
+        torch.save(data, filename)

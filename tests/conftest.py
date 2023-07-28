@@ -9,7 +9,8 @@ import torch
 from omegaconf import OmegaConf
 
 from data.model import ExampleModel
-from data.transforms import *
+from data.transforms import *  # NOQA
+from data.datasets import *  # NOQA
 
 
 ROOT: str = '/tmp/igniter/tests'

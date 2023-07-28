@@ -28,9 +28,17 @@ install_requires = [
 ]
 
 
+__name__ = 'igniter'
+
+with open(f'{__name__}/__init__.py', 'r') as init_file:
+    for line in init_file:
+        if line.startswith("__version__"):
+            exec(line)
+
+
 setup(
-    name='igniter',
-    version='0.0.1',
+    name=__name__,
+    version=__version__,
     long_description=readme,
     packages=find_packages(),
     zip_safe=False,

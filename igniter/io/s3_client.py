@@ -59,8 +59,10 @@ class S3Client(object):
             with tqdm(
                 total=total_bytes, unit='B', unit_scale=True, unit_divisor=1024, desc=f'Downloading {last_n(file_key)}'
             ) as progress_bar:
+
                 def progress_callback(bytes_transferred):
                     progress_bar.update(bytes_transferred)
+
                 self.client.download_file(self.bucket_name, file_key, filename, Callback=progress_callback)
         except KeyboardInterrupt:
             logger.info('Download interrupted. Cleaning up ...')
