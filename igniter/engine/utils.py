@@ -26,7 +26,7 @@ def _remap_keys(weight_dict) -> OrderedDict:
     return new_wpth
 
 
-def get_weights(cfg: DictConfig) -> OrderedDict:
+def get_weights(cfg: DictConfig, **kwargs: Dict[str, Any]) -> OrderedDict:
     weight_path = cfg.build[model_name(cfg)].get('weights', None) if isinstance(cfg, DictConfig) else cfg
     if not weight_path or len(weight_path) == 0:
         logger.warning('Weight is empty!'.upper())
@@ -41,8 +41,8 @@ def get_weights(cfg: DictConfig) -> OrderedDict:
     return state_dict
 
 
-def load_all(engine, cfg: DictConfig):
-    state_dict = get_weights(cfg)
+def load_all(engine, cfg: DictConfig, **kwargs: Dict[str, Any]):
+    state_dict = get_weights(cfg, **kwargs)
     if not state_dict:
         return
 
@@ -59,25 +59,12 @@ def load_all(engine, cfg: DictConfig):
 
 
 def load_weights(model: nn.Module, cfg: DictConfig, **kwargs):
-    weight_dict = get_weights(cfg)
+    weight_dict = get_weights(cfg, **kwargs)
     if not weight_dict:
         return
 
     state_dict = model.state_dict()
-    weight_key = None
-    for name, value in weight_dict.items():
-        if not isinstance(value, dict):
-            continue
-
-        for key in value.keys():
-            if key in state_dict.keys():
-                weight_key = name
-                break
-
-        if weight_key:
-            break
-
-    wpth = _remap_keys(weight_dict[weight_key])
+    wpth = _remap_keys(weight_dict['model'])
 
     for key in state_dict:
         if key not in wpth or state_dict[key].shape == wpth[key].shape:
