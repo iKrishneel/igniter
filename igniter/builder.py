@@ -29,6 +29,12 @@ from igniter.registry import (
 MODES: List[str] = ['train', 'val', 'test']
 
 
+def build_func(func_name: str = 'default'):
+    func = func_registry[func_name]
+    assert func, f'Function {func_name} not found in registry \n{func_registry}'
+    return func
+
+
 def configurable(func: Callable):
     @functools.wraps(func)
     def wrapper(cfg: DictConfig, *args, **kwargs):
@@ -139,12 +145,6 @@ def build_io(cfg: DictConfig) -> Dict[str, Callable]:
     return {key: _build(cfg.io[key]) for key in cfg.io}
 
 
-def build_func(func_name: str = 'default'):
-    func = func_registry[func_name]
-    assert func, f'Function {func_name} not found in registry \n{func_registry}'
-    return func
-
-
 @configurable
 def build_validation(model_name: str, cfg: DictConfig, trainer_engine: Engine) -> Engine:
     if not cfg.build[model_name].get('val', None):
@@ -221,7 +221,7 @@ def build_engine(model_name, cfg: DictConfig, mode: str = 'train') -> Callable:
     logger.info(f'\n{model}')
     logger.info('\n' + loggable_model_info(model))
 
-    importlib.import_module('igniter.engine.utils').load_weights(model, cfg)
+    # importlib.import_module('igniter.engine.utils').load_weights(model, cfg)
 
     # TODO: Remove hardcoded name and replace with registry based
     logger.warning('# TODO: Remove hardcoded name and replace with registry based')
@@ -235,6 +235,12 @@ def build_engine(model_name, cfg: DictConfig, mode: str = 'train') -> Callable:
             cfg, process_func, model, dataloader, optimizer=optimizer, io_ops=io_ops, scheduler=scheduler
         )
         build_validation(cfg, engine)
+
+        module = importlib.import_module('igniter.engine.utils')
+        if cfg.options.resume:
+            module.load_all(engine, cfg)
+        else:
+            module.load_weights(model, cfg)
     else:
         attrs = cfg.build[model_name].get('inference', None)
         name = attrs.get('engine', 'default_inference') if attrs else 'default_inference'

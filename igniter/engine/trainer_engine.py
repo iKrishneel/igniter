@@ -116,7 +116,7 @@ class TrainerEngine(Engine):
 
         def _checkpointer():
             filename = prefix % f'model_{str(self.state.epoch).zfill(7)}.pt'
-            self.checkpoint(self.trainer_state_dict(), filename)
+            self.checkpoint(self.get_state_dict(), filename)
 
         self.add_event_handler(
             Events.ITERATION_COMPLETED(every=self._cfg.solvers.snapshot) | Events.EPOCH_COMPLETED, _checkpointer
@@ -126,8 +126,14 @@ class TrainerEngine(Engine):
         lr = self._optimizer.param_groups[0]['lr']
         return lr[0] if isinstance(lr, list) else lr
 
-    def trainer_state_dict(self) -> Dict[str, Any]:
-        return {'model': self._model.state_dict(), 'optimizer': self._optimizer.state_dict()}
+    def get_state_dict(self) -> Dict[str, Any]:
+        return {
+            'model': self._model.state_dict(),
+            'optimizer': self._optimizer.state_dict(),
+            'scheduler': self._scheduler.state_dict(),
+            'state': self.state,
+            'cfg': self._cfg,
+        }
 
     @staticmethod
     def add_persistent_logger(engine, **kwargs) -> None:

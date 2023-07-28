@@ -18,38 +18,64 @@ from ..utils import model_name
 __all__ = ['load_weights', 'load_weights_from_s3', 'load_weights_from_file']
 
 
-def load_weights(model: nn.Module, cfg: DictConfig, **kwargs):
-    if isinstance(cfg, DictConfig):
-        weight_path = cfg.build[model_name(cfg)].get('weights', None)
-    else:
-        weight_path = cfg
+def _remap_keys(weight_dict) -> OrderedDict:
+    new_wpth = OrderedDict()
+    for key in weight_dict:
+        new_key = key.replace('module.', '') if 'module.' in key else key
+        new_wpth[new_key] = weight_dict[key]
+    return new_wpth
 
+
+def get_weights(cfg: DictConfig) -> OrderedDict:
+    weight_path = cfg.build[model_name(cfg)].get('weights', None) if isinstance(cfg, DictConfig) else cfg
     if not weight_path or len(weight_path) == 0:
         logger.warning('Weight is empty!'.upper())
         return
 
-    if 's3://' in weight_path:
-        decoder = kwargs.get('decoder', None)
-        weight_dict = load_weights_from_s3(weight_path, decoder)
-    else:
-        weight_dict = load_weights_from_file(weight_path)
+    state_dict = (
+        load_weights_from_s3(weight_path, kwargs.get('decoder', None))
+        if 's3://' in weight_path
+        else load_weights_from_file(weight_path)
+    )
+    assert state_dict is not None, 'Weight dict is None'
+    return state_dict
 
-    assert weight_dict is not None
 
-    def _remap_keys(weight_dict):
-        new_wpth = OrderedDict()
-        for key in weight_dict:
-            new_key = key.replace('module.', '') if 'module.' in key else key
-            new_wpth[new_key] = weight_dict[key]
-        return new_wpth
+def load_all(engine, cfg: DictConfig):
+    state_dict = get_weights(cfg)
+    if not state_dict:
+        return
+
+    engine._model.load_state_dict(state_dict['model'])
+
+    if 'optimizer' in state_dict and engine._optimizer:
+        engine._optimizer.load_state_dict(state_dict['optimizer'])
+
+    if 'scheduler' in state_dict and engine._scheduler:
+        engine._scheduler.load_state_dict(state_dict['scheduler'])
+
+    if 'state' in state_dict:
+        engine.state = state_dict['state']
+
+
+def load_weights(model: nn.Module, cfg: DictConfig, **kwargs):
+    weight_dict = get_weights(cfg)
+    if not weight_dict:
+        return
 
     state_dict = model.state_dict()
-    for key in weight_dict:
-        if any([k in weight_dict[key] for k in ['state', 'param_groups']]):
+    weight_key = None
+    for name, value in weight_dict.items():
+        if not isinstance(value, dict):
             continue
-        # TODO: check if current key has keys similar to state_dict
-        weight_key = key
-        break
+
+        for key in value.keys():
+            if key in state_dict.keys():
+                weight_key = name
+                break
+
+        if weight_key:
+            break
 
     wpth = _remap_keys(weight_dict[weight_key])
 
@@ -91,4 +117,5 @@ def load_weights_from_s3(path: str, decoder: str = None) -> Dict[str, Any]:
 
 
 def load_weights_from_file(path: str) -> Dict[str, torch.Tensor]:
+    assert osp.isfile(path), f'Not weight found {path}'
     return torch.load(path, map_location='cpu')

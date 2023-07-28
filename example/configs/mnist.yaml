@@ -53,11 +53,14 @@ solvers:
       gamma: 0.1
 
 io:
+  # checkpoint:
+  #   engine: 's3_writer'
+  #   bucket_name: "sr-shokunin"
+  #   root: "perception/models/example/mnist/"
   checkpoint:    
-    engine: 's3_writer'
-    bucket_name: "sr-shokunin"
-    root: "perception/models/example/mnist/"
-  
+    engine: 'file_writer'
+    root: "/root/krishneel/Downloads/mnist/models/mnist/"
+
 build:
   mnist:
     dataset: "mnist"
@@ -75,4 +78,4 @@ build:
 
 flow:
   - mnist
-  - mnist
+#   - mnist
