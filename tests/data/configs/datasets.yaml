@@ -1,0 +1,32 @@
+device: "cpu"
+
+transforms:
+  train:
+    engine: "torchvision.transforms"
+    ToTensor:
+    Normalize:
+      mean: [0.485, 0.456, 0.406]
+      std: [0.229, 0.224, 0.225]
+    Resize:
+      size: [1024, 1024]
+
+datasets:
+  dataloader:
+    num_workers: 0
+    batch_size: 1
+    shuffle: False
+  test_dataset:
+    train:
+      root: "/path"
+    val:
+      root: "/path"
+
+build:
+  test_model:
+    dataset: "test_dataset"
+    weights: "/tmp/igniter/tests/model.pth"
+    train:
+      data
+
+  model: "test_model"
+
