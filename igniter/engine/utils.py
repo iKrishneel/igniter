@@ -76,7 +76,7 @@ def load_weights_from_s3(path: str, decoder: str = None) -> Dict[str, Any]:
 
     s3_client = S3Client(bucket_name=bucket_name)
     os.makedirs('/'.join(root.split('/')[:-1]), exist_ok=True)
-    
+
     logger.info(f'Loading weights from {path}')
     if decoder:
         weights = s3_client(path, decoder=decoder)

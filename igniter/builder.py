@@ -2,6 +2,7 @@
 
 from typing import List, Dict, Any, Callable, Optional, Union
 import inspect
+import functools
 
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -26,6 +27,16 @@ from igniter.registry import (
 )
 
 MODES: List[str] = ['train', 'val', 'test']
+
+
+def configurable(func: Callable):
+    @functools.wraps(func)
+    def wrapper(cfg: DictConfig, *args, **kwargs):
+        name = model_name(cfg)
+        assert name, 'build model name is required'
+        return func(name, cfg, *args, **kwargs)
+
+    return wrapper
 
 
 def build_transforms(cfg: DictConfig, mode: Optional[str] = None) -> Union[List[Any], Dict[str, List[Any]]]:
@@ -53,10 +64,11 @@ def build_transforms(cfg: DictConfig, mode: Optional[str] = None) -> Union[List[
     return transforms
 
 
-def build_dataloader(cfg: DictConfig, mode: str) -> DataLoader:
+@configurable
+def build_dataloader(model_name: str, cfg: DictConfig, mode: str) -> DataLoader:
     logger.info(f'Building {mode} dataloader')
 
-    name = cfg.build[model_name(cfg)].dataset
+    name = cfg.build[model_name].dataset
     attrs = cfg.datasets[name].get(mode, None)
     kwargs = dict(cfg.datasets.dataloader)
     assert attrs, f'{mode} not found in datasets'
@@ -68,24 +80,26 @@ def build_dataloader(cfg: DictConfig, mode: str) -> DataLoader:
     return DataLoader(dataset, collate_fn=collate_fn, **kwargs)
 
 
-def build_model(cfg: DictConfig) -> nn.Module:
-    name = model_name(cfg)
+@configurable
+def build_model(name: str, cfg: DictConfig) -> nn.Module:
     logger.info(f'Building network model {name}')
     cls_or_func = model_registry[name]
     attrs = cfg.models[name] or {}
     return cls_or_func(**attrs)
 
 
-def build_optim(cfg: DictConfig, model: nn.Module):
-    name = cfg.build[model_name(cfg)].train.solver
+@configurable
+def build_optim(model_name: str, cfg: DictConfig, model: nn.Module):
+    name = cfg.build[model_name].train.solver
     logger.info(f'Building optimizer {name}')
     engine = cfg.solvers.get('engine', 'torch.optim')
     module = importlib.import_module(engine)
     return getattr(module, name)(model.parameters(), **cfg.solvers[name])
 
 
-def build_scheduler(cfg: DictConfig, optimizer: nn.Module, dataloader: DataLoader):
-    name = cfg.build[model_name(cfg)].train.get('scheduler', None)
+@configurable
+def build_scheduler(model_name: str, cfg: DictConfig, optimizer: nn.Module, dataloader: DataLoader):
+    name = cfg.build[model_name].train.get('scheduler', None)
     if not name:
         return
 
@@ -131,13 +145,14 @@ def build_func(func_name: str = 'default'):
     return func
 
 
-def build_validation(cfg: DictConfig, trainer_engine: Engine) -> Engine:
-    if not cfg.build[model_name(cfg)].get('val', None):
+@configurable
+def build_validation(model_name: str, cfg: DictConfig, trainer_engine: Engine) -> Engine:
+    if not cfg.build[model_name].get('val', None):
         logger.warning('Not validation config found. Validation will be skipped')
         return
 
     logger.info('Adding validation')
-    val_attrs = cfg.build[model_name(cfg)].val
+    val_attrs = cfg.build[model_name].val
     process_func = build_func(val_attrs.get('func', 'default_val_forward'))
     dataloader = build_dataloader(cfg, 'val')
     val_engine = engine_registry['default_evaluation'](cfg, process_func, trainer_engine._model, dataloader)
@@ -178,6 +193,7 @@ def validate_config(cfg: DictConfig):
             cfg.solvers.snapshot = cfg.solvers.get('snapshot', -1)
 
         trans_attrs = cfg.get('transforms', None)
+
         if trans_attrs:
             for key in trans_attrs:
                 if 'engine' in key:
@@ -187,7 +203,8 @@ def validate_config(cfg: DictConfig):
     return cfg
 
 
-def build_engine(cfg: DictConfig, mode: str = 'train') -> Callable:
+@configurable
+def build_engine(model_name, cfg: DictConfig, mode: str = 'train') -> Callable:
     validate_config(cfg)
 
     assert mode in MODES, f'Mode must be one of {MODES} but got {mode}'
@@ -196,7 +213,7 @@ def build_engine(cfg: DictConfig, mode: str = 'train') -> Callable:
     yaml_data = OmegaConf.to_yaml(cfg)
     logger.info(f'\033[32m\n{yaml_data} \033[0m')
 
-    mode_attrs = cfg.build[model_name(cfg)].get(mode, None)
+    mode_attrs = cfg.build[model_name].get(mode, None)
     func_name = mode_attrs.get('func', 'default') if mode_attrs else 'default'
 
     process_func = build_func(func_name)
@@ -219,7 +236,7 @@ def build_engine(cfg: DictConfig, mode: str = 'train') -> Callable:
         )
         build_validation(cfg, engine)
     else:
-        attrs = cfg.build[model_name(cfg)].get('inference', None)
+        attrs = cfg.build[model_name].get('inference', None)
         name = attrs.get('engine', 'default_inference') if attrs else 'default_inference'
         engine = engine_registry[name](cfg)
 
@@ -231,7 +248,7 @@ def _trainer(rank: int, cfg: DictConfig) -> None:
     trainer()
 
 
-def trainer(cfg: DictConfig):
+def trainer(cfg: DictConfig) -> None:
     if is_distributed(cfg):
         init_args = dict(cfg.distributed[cfg.distributed.type])
         with idist.Parallel(

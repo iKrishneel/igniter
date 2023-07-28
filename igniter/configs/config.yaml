@@ -15,7 +15,7 @@ transforms:
   train:
     engine: 'torchvision.transforms'
     augs:
-      # ToTensor:
+      ToTensor:
       # Resize:
       #   size: [1024, 1024]
       # Normalize:
@@ -31,6 +31,7 @@ datasets:
     train:
       root: "/root/krishneel/Downloads/datasets/coco/val2017"
       annFile: "/root/krishneel/Downloads/datasets/coco/annotations/instances_val2017.json"
+      transforms: "train"
     val:
 
 models:
@@ -51,7 +52,12 @@ io:
     root: 'perception/sam/coco/val2017/features'
   
 build:
-  model: "sam"
-  dataset: "coco"
-  solver: "SGD"
-  func: "sam_image_feature_saver"
+  sam:
+    dataset: "coco"
+    solver: "SGD"
+    # func: "sam_image_feature_saver"
+    train:
+      solver: 'SGD'
+      epochs: 10
+
+model: "sam"

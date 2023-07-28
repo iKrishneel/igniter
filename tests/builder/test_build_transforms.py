@@ -11,7 +11,7 @@ from igniter.builder import build_transforms
 
 @pytest.fixture(scope='session')
 def cfg():
-    config_path = osp.join(osp.dirname(osp.abspath(__file__)), 'data/configs/transforms.yaml')
+    config_path = osp.join(osp.dirname(osp.abspath(__file__)), '../data/configs/transforms.yaml')
     assert osp.isfile(config_path)
     return OmegaConf.load(config_path)
 
@@ -56,7 +56,3 @@ def test_build_transforms_wrong_mode(cfg):
     transform_dict = build_transforms(cfg, None)
     assert isinstance(transform_dict, dict)
     # assert len(transform_dict) == 0
-
-
-def test_build_dataloader(cfg):
-    pass

@@ -19,6 +19,9 @@ class Net(nn.Module):
         self.fc2 = nn.Linear(50, 10)
 
     def forward(self, x, targets=None):
+        device = self.conv1.weight.device
+        x = x.to(device)
+
         x = F.relu(F.max_pool2d(self.conv1(x), 2))
         x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
         x = x.view(-1, 320)
@@ -28,7 +31,7 @@ class Net(nn.Module):
         x = F.log_softmax(x, dim=-1)
 
         if targets is not None:
-            losses = self.losses(x, targets)
+            losses = self.losses(x, targets.to(device))
             if self.training:
                 return losses
             return x, losses
@@ -65,6 +68,7 @@ def metric(engine, name):
 
     def _output_transform(data):
         data['y'] = data.pop('y_true')
+        data['y'] = data['y'].to(data['y_pred'].device)
         return data
 
     Accuracy(output_transform=_output_transform).attach(engine, name)
