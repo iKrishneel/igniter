@@ -5,7 +5,7 @@ import inspect
 import functools
 
 import torch.nn as nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 
 import importlib
 import os
@@ -71,18 +71,35 @@ def build_transforms(cfg: DictConfig, mode: Optional[str] = None) -> Union[List[
 
 
 @configurable
+def build_dataset(model_name: str, cfg: DictConfig, mode: str) -> Dataset:
+    dataset_name = cfg.build[model_name].dataset
+    attrs = cfg.datasets[dataset_name].get(mode, None)
+    assert attrs, f'{mode} not found in datasets'
+    
+    cls = dataset_registry[datast_name]
+    dataset = cls(**dict(attrs))
+
+    # TODO: apply transform hook
+    # TODO: add transform to the dataset
+
+    assert issubclass(dataset, Dataset), f'{dataset_name} must be subclass of {type(Dataclass)}'
+    return dataset
+    
+
+@configurable
 def build_dataloader(model_name: str, cfg: DictConfig, mode: str) -> DataLoader:
     logger.info(f'Building {mode} dataloader')
 
-    name = cfg.build[model_name].dataset
-    attrs = cfg.datasets[name].get(mode, None)
+    # name = cfg.build[model_name].dataset
+    # attrs = cfg.datasets[name].get(mode, None)
     kwargs = dict(cfg.datasets.dataloader)
-    assert attrs, f'{mode} not found in datasets'
+    # assert attrs, f'{mode} not found in datasets'
 
-    cls = dataset_registry[name]
+    # cls = dataset_registry[name]
+    dataset = build_dataset(cfg)
     transforms = build_transforms(cfg, mode)
     collate_fn = build_func(kwargs.pop('collate_fn', 'collate_fn'))
-    dataset = cls(**{**dict(attrs), 'transforms': transforms})
+    # dataset = cls(**{**dict(attrs), 'transforms': transforms})
     return DataLoader(dataset, collate_fn=collate_fn, **kwargs)
 
 

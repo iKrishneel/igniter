@@ -41,7 +41,7 @@ class Registry(object):
     def remove(self, name: str) -> Callable:
         return self.__REGISTRY.pop(name, None)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         title = f'Registry for {self.name}\n'
         return title + tabulate(
             [[k, v] for k, v in self.__REGISTRY.items()], headers=['Name', 'Objects'], tablefmt="fancy_grid"
