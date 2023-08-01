@@ -237,7 +237,7 @@ def build_engine(model_name, cfg: DictConfig, mode: str = 'train') -> Callable:
         build_validation(cfg, engine)
 
         module = importlib.import_module('igniter.engine.utils')
-        if cfg.options.resume:
+        if cfg.get('options', {}).get('resume'):
             module.load_all(engine, cfg)
         else:
             module.load_weights(model, cfg)
