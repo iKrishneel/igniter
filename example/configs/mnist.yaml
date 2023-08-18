@@ -57,7 +57,7 @@ io:
   #   engine: 's3_writer'
   #   bucket_name: "sr-shokunin"
   #   root: "perception/models/example/mnist/"
-  checkpoint:    
+  checkpoint:
     engine: 'file_writer'
     root: "/root/krishneel/Downloads/mnist/models/mnist/"
 
