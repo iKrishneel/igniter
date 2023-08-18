@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 
-from typing import Any, Dict, Union
-from dataclasses import dataclass
-
 import os
 import os.path as osp
-import torch
+from dataclasses import dataclass
 from io import BytesIO
+from typing import Any, Dict, Union
 
-from .s3_client import S3Client
+import torch
+
 from ..registry import io_registry
+from .s3_client import S3Client
 
 
 @io_registry('s3_writer')

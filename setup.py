@@ -1,8 +1,6 @@
 #! /usr/bin/env python
 
-from setuptools import setup
-from setuptools import find_packages
-
+from setuptools import find_packages, setup
 
 try:
     with open('README.md', 'r') as f:
@@ -25,6 +23,7 @@ install_requires = [
     'pytest',
     'pytest-mock',
     'pytorch-ignite @ git+https://github.com/pytorch/ignite@master',
+    'tensorboard'
 ]
 
 

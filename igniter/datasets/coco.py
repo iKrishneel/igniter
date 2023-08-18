@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import time
+
 from pycocotools.coco import COCO as _COCO
 
 from ..io.s3_client import S3Client

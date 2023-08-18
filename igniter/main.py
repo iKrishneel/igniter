@@ -1,17 +1,17 @@
 #!/usr/bin/env python
 
-from typing import Callable
-import os
-import inspect
 import functools
-from copy import deepcopy
+import inspect
+import os
 import subprocess
+from copy import deepcopy
+from typing import Callable
 
 import hydra
-from omegaconf import OmegaConf, DictConfig, open_dict
+from omegaconf import DictConfig, OmegaConf, open_dict
 
-from .logger import logger
 from .builder import trainer
+from .logger import logger
 
 
 def guard(func: Callable):

@@ -1,24 +1,21 @@
 #!/usr/bin/env python
 
-from typing import Dict, Any, Callable, Optional
-
-import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader
-
 import importlib
 import os
 from datetime import datetime
-from omegaconf import OmegaConf, DictConfig
+from typing import Any, Callable, Dict, Optional
 
-from ignite.engine import Engine, Events
-from ignite.contrib.handlers import ProgressBar
 import ignite.distributed as idist
+import torch
+import torch.nn as nn
+from ignite.contrib.handlers import ProgressBar
+from ignite.engine import Engine, Events
+from omegaconf import DictConfig, OmegaConf
+from torch.utils.data import DataLoader
 
-from igniter.utils import is_distributed, model_name, get_device
 from igniter.logger import logger
-from igniter.registry import io_registry, engine_registry
-
+from igniter.registry import engine_registry, io_registry
+from igniter.utils import get_device, is_distributed, model_name
 
 __all__ = ['TrainerEngine', 'EvaluationEngine']
 

@@ -1,30 +1,28 @@
 #!/usr/bin/env python
 
-from typing import List, Dict, Any, Callable, Optional, Union
-import inspect
 import functools
-
-import torch.nn as nn
-from torch.utils.data import DataLoader
-
 import importlib
+import inspect
 import os
-from omegaconf import DictConfig, OmegaConf, open_dict
+from typing import Any, Callable, Dict, List, Optional, Union
 
+import ignite.distributed as idist
+import torch.nn as nn
 from ignite.engine import Engine, Events
 from ignite.handlers import BasicTimeProfiler
-import ignite.distributed as idist
+from omegaconf import DictConfig, OmegaConf, open_dict
+from torch.utils.data import DataLoader
 
-from igniter.utils import is_distributed, model_name, loggable_model_info
 from igniter.logger import logger
 from igniter.registry import (
-    model_registry,
     dataset_registry,
-    io_registry,
-    func_registry,
     engine_registry,
+    func_registry,
+    io_registry,
+    model_registry,
     transform_registry,
 )
+from igniter.utils import is_distributed, loggable_model_info, model_name
 
 MODES: List[str] = ['train', 'val', 'test']
 

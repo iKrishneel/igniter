@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 
 from io import BytesIO
-from typing import Dict, Any
+from typing import Any, Dict
 
 import numpy as np
 
 from igniter.registry import Registry
-
 
 s3_utils_registry = Registry()
 

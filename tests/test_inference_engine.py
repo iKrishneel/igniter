@@ -1,15 +1,14 @@
 #!/usr/bin/env python
 
-import pytest
 import functools
 
-import torch
 import numpy as np
+import pytest
+import torch
+from conftest import ROOT
+from data.model import ExampleModel
 
 from igniter.engine import InferenceEngine
-
-from data.model import ExampleModel
-from conftest import ROOT
 
 
 def assert_all(func):

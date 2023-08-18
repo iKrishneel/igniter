@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import logging
+
 import colorlog
 
 logger = logging.getLogger()

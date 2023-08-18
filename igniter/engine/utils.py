@@ -2,18 +2,16 @@
 
 import os
 import os.path as osp
-
-from typing import Any, Dict
 from collections import OrderedDict
+from typing import Any, Dict
 
 import torch
 import torch.nn as nn
 from omegaconf import DictConfig
 
-from ..logger import logger
 from ..io import S3Client
+from ..logger import logger
 from ..utils import model_name
-
 
 __all__ = ['load_weights', 'load_weights_from_s3', 'load_weights_from_file']
 

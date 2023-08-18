@@ -1,18 +1,18 @@
 #!/usr/bin/env python
 
-from typing import Any, Type, Callable, Optional, Union
-from dataclasses import dataclass
-
 import os
 import threading
+from dataclasses import dataclass
 from io import BytesIO
+from typing import Any, Callable, Optional, Type, Union
 
-from tqdm import tqdm
 import boto3
 from botocore.exceptions import ClientError
+from tqdm import tqdm
+
 from igniter.logger import logger
 
-from .s3_utils import s3_utils_registry, lut
+from .s3_utils import lut, s3_utils_registry
 
 
 @dataclass
@@ -127,8 +127,8 @@ if __name__ == '__main__':
     # im = s3[args.root + 'train2017/000000005180.jpg']
     # js = s3['instances_val2017.json']
 
-    from torchvision.models import resnet18
     import torch
+    from torchvision.models import resnet18
 
     buffer = BytesIO()
 

@@ -1,19 +1,18 @@
 #!/usr/bin/env python
 
-from glob import glob
 import os.path as osp
-from typing import Any, Dict, Union, Optional
+from glob import glob
+from typing import Any, Dict, Optional, Union
 
 import numpy as np
-from PIL import Image
-
 import torch
-from torchvision import transforms as T
 from omegaconf import DictConfig, OmegaConf, open_dict
+from PIL import Image
+from torchvision import transforms as T
 
 from igniter.builder import build_model, build_transforms, model_name
-from igniter.registry import engine_registry
 from igniter.logger import logger
+from igniter.registry import engine_registry
 
 from .utils import load_weights
 
