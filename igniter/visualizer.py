@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
 from typing import List, Optional
-import numpy as np
+
 import cv2 as cv
+import numpy as np
 
 
 def resize(data: List[np.ndarray], size: Optional[List[int]] = None) -> List[np.ndarray]:

@@ -3,8 +3,8 @@
 import torch
 from omegaconf import DictConfig
 
-from igniter.utils import convert_bytes_to_human_readable
 from igniter.registry import func_registry
+from igniter.utils import convert_bytes_to_human_readable
 
 __all__ = ['default_forward', 'default_val_forward', 'default_collate_fn']
 
@@ -53,8 +53,9 @@ def default_collate_fn(data):
 
 @func_registry('default_test')
 def default_test(cfg: DictConfig) -> None:
-    import matplotlib.pyplot as plt
     import cv2 as cv
+    import matplotlib.pyplot as plt
+
     from igniter.builder import build_engine
     from igniter.visualizer import make_square_grid
 

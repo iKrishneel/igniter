@@ -1,28 +1,29 @@
 #!/usr/bin/env python
 
 import os
-from typing import Any, Dict, List, Optional, Tuple
-from io import BytesIO
 import time
-
-import torch
-import torch.nn as nn
-from torchvision.transforms import functional as TF
-from einops import rearrange
+from io import BytesIO
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
-
 import timm
-from timm.models import swin_tiny_patch4_window7_224
-
+import torch
+import torch.nn as nn
+from einops import rearrange
+from packaging import version
 from segment_anything.modeling.common import LayerNorm2d
+from timm.models import swin_tiny_patch4_window7_224
+from torchvision.transforms import functional as TF
 
 from igniter import initiate
-from igniter.logger import logger
 from igniter.datasets import S3CocoDataset
-from igniter.registry import model_registry, func_registry, dataset_registry, transform_registry
-
-from packaging import version
+from igniter.logger import logger
+from igniter.registry import (
+    dataset_registry,
+    func_registry,
+    model_registry,
+    transform_registry,
+)
 
 version = version.parse(timm.__version__)
 assert version.minor == 6, f'Needs timm version 0.6.xx but found {timm.__version__}'

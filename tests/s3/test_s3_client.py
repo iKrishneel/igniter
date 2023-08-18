@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 
-import pytest
-
-from io import BytesIO
 import base64
-import numpy as np
-from PIL import Image
+from io import BytesIO
+
 import cv2 as cv
+import numpy as np
+import pytest
+from PIL import Image
 
 from igniter.io import S3Client
 

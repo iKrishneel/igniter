@@ -1,18 +1,17 @@
 #!/usr/bin/env python
 
-from abc import abstractmethod
-from typing import Any, Tuple, Optional, Callable
 import os.path as osp
+from abc import abstractmethod
+from typing import Any, Callable, Optional, Tuple
+
 import numpy as np
+from PIL import Image
 from torch.utils.data import Dataset
 
-from PIL import Image
-
-from .coco import COCO
-from ..utils import check_str
 from ..io.s3_client import S3Client
 from ..logger import logger
-
+from ..utils import check_str
+from .coco import COCO
 
 __all__ = ['S3Dataset', 'S3CocoDataset']
 

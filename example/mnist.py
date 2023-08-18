@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from igniter import initiate
-from igniter.registry import model_registry, dataset_registry, proc_registry
+from igniter.registry import dataset_registry, model_registry, proc_registry
 
 
 @model_registry('mnist')

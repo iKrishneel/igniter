@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from dataclasses import dataclass, field
-from typing import Dict, Union, Optional, Callable
+from typing import Callable, Dict, Optional, Union
 
 from tabulate import tabulate
 

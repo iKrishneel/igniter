@@ -1,17 +1,23 @@
 #!/usr/bin/env python
 
-from typing import List, Dict, Any, Iterator, Tuple
 import os.path as osp
+from typing import Any, Dict, Iterator, List, Tuple
+
 import numpy as np
 import torch
+from segment_anything import SamPredictor as _SamPredictor
+from segment_anything import sam_model_registry
+from segment_anything.modeling import Sam
 from torchvision.datasets import CocoDetection as _Dataset
 
-from igniter.registry import model_registry, dataset_registry, io_registry, func_registry
 from igniter import initiate
 from igniter.io import S3IO
-
-from segment_anything import sam_model_registry, SamPredictor as _SamPredictor
-from segment_anything.modeling import Sam
+from igniter.registry import (
+    dataset_registry,
+    func_registry,
+    io_registry,
+    model_registry,
+)
 
 
 @model_registry('sam')

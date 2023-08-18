@@ -3,15 +3,13 @@
 import os
 import os.path as osp
 import shutil
+
 import pytest
-
 import torch
-from omegaconf import OmegaConf
-
+from data.datasets import *  # NOQA
 from data.model import ExampleModel
 from data.transforms import *  # NOQA
-from data.datasets import *  # NOQA
-
+from omegaconf import OmegaConf
 
 ROOT: str = '/tmp/igniter/tests'
 os.makedirs(ROOT, exist_ok=True)
