@@ -26,4 +26,3 @@ build:
     weights: "/tmp/igniter/tests/model.pth"
 
   model: "test_model"
-

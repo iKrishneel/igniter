@@ -36,7 +36,7 @@ datasets:
 
 models:
   sam:
-    name: "vit_h"    
+    name: "vit_h"
     weights: "/root/krishneel/Documents/research/zero_shot/segment-anything/weights/sam_vit_h_4b8939.pth"
 
 solvers:
@@ -50,7 +50,7 @@ io:
   args:
     bucket_name: 'sr-shokunin'
     root: 'perception/sam/coco/val2017/features'
-  
+
 build:
   sam:
     dataset: "coco"
