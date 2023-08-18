@@ -15,7 +15,7 @@ distributed:
 models:
   swin:
     in_size: &size [896, 896]
-    
+
 transforms:
   train: &train
     engine: "torchvision.transforms"
@@ -28,7 +28,7 @@ transforms:
     PadToSize:
       size: 1024
     Resize:
-      size: *size      
+      size: *size
   val:
     <<: *train
   test:
@@ -45,11 +45,11 @@ datasets:
     train:
       bucket_name: &bucket "sr-shokunin"
       root: "perception/datasets/coco/train2017"
-      anno_fn: "perception/datasets/coco/annotations/instances_train2017.json"    
+      anno_fn: "perception/datasets/coco/annotations/instances_train2017.json"
     val:
       bucket_name: "sr-shokunin"
       root: "perception/datasets/coco/val2017"
-      anno_fn: "perception/datasets/coco/annotations/instances_val2017.json"      
+      anno_fn: "perception/datasets/coco/annotations/instances_val2017.json"
 
 solvers:
   engine: "torch.optim"
@@ -64,7 +64,7 @@ solvers:
       gamma: 0.01
 
 io:
-  checkpoint:    
+  checkpoint:
     engine: 's3_writer'
     bucket_name: *bucket
     root: "perception/models/sam_distill/"

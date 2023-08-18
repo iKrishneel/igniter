@@ -23,7 +23,7 @@ install_requires = [
     'pytest',
     'pytest-mock',
     'pytorch-ignite @ git+https://github.com/pytorch/ignite@master',
-    'tensorboard'
+    'tensorboard',
 ]
 
 
