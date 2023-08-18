@@ -1,14 +1,10 @@
-name: Build
+name: Linter
 
 on:
-  workflow_run:
-    workflows: ["Linter"]
-    types:
-      - completed
-#   push:
-#     branches: ["main"]
-#   pull_request:
-#     branches: ["main"]
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
 
 env:
   DEBIAN_FRONTEND: noninteractive
@@ -39,12 +35,8 @@ jobs:
         with:
           python-version: ${{ env.PYTHON }}
 
-      - name: Installing dependencies
-        run: |
-          pip install -e ${{ env.REPO_NAME }}
-          pip install torch torchvision
-
-      - name: Running PyTest
+      - name: Running pre-commit
         run: |
           cd ${{ env.REPO_NAME }}
-          pytest -sv .
+          pip install pre-commit
+          pre-commit run --all-files --show-diff-on-failure
