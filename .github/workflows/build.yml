@@ -39,3 +39,8 @@ jobs:
         run: |
           pip install -e ${{ env.REPO_NAME }}
           pip install torch torchvision
+
+      - name: Running PyTest
+        run: |
+          cd ${{ env.REPO_NAME }}
+          pytest -sv .
