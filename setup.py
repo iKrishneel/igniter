@@ -23,7 +23,7 @@ install_requires = [
     'pytest',
     'pytest-mock',
     'pytorch-ignite @ git+https://github.com/pytorch/ignite@master',
-    'tensorboard'
+    'tensorboard',
 ]
 
 
@@ -37,7 +37,7 @@ with open(f'{__name__}/__init__.py', 'r') as init_file:
 
 setup(
     name=__name__,
-    version=__version__,
+    version=f'{__version__}',  # NOQA: F821
     long_description=readme,
     packages=find_packages(),
     zip_safe=False,

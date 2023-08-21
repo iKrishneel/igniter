@@ -1,23 +1,23 @@
 #!/usr/bin/env python
 
 import os.path as osp
-from typing import Any, Dict, Iterator, List, Tuple
+from typing import Any, Dict, Iterator, List, Tuple, Type
 
 import numpy as np
 import torch
+import torch.nn as nn
 from segment_anything import SamPredictor as _SamPredictor
 from segment_anything import sam_model_registry
-from segment_anything.modeling import Sam
+
+# from segment_anything.modeling import Sam
 from torchvision.datasets import CocoDetection as _Dataset
 
 from igniter import initiate
-from igniter.io import S3IO
-from igniter.registry import (
-    dataset_registry,
-    func_registry,
-    io_registry,
-    model_registry,
-)
+
+# from igniter.io import S3IO
+from igniter.registry import dataset_registry, func_registry, model_registry
+
+_Module = Type[nn.Module]
 
 
 @model_registry('sam')
@@ -48,11 +48,11 @@ class SamPredictor(_SamPredictor):
     def to(self, device):
         self.model.to(device)
 
-    def children(self) -> Iterator['Module']:
+    def children(self) -> Iterator[_Module]:
         for name, module in self.model.named_children():
             yield module
 
-    def modules(self) -> Iterator['Module']:
+    def modules(self) -> Iterator[_Module]:
         for _, module in self.model.named_modules():
             yield module
 
@@ -92,7 +92,7 @@ class Dataset(_Dataset):
 
 @func_registry('sam_image_feature_saver')
 def sam_forward(engine, batch):
-    cfg = engine._cfg
+    # cfg = engine._cfg
     inputs = [{'image': data['image']} for data in batch]
     try:
         features = engine._model.module.forward(inputs)

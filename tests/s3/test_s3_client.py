@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import base64
 from io import BytesIO
 
 import cv2 as cv
@@ -30,7 +29,7 @@ def test_s3_client_cv_image(image, mocker):
         return to_s3_response(image_bytes)
 
     m = mocker.patch('igniter.io.s3_client.S3Client.get', mock_get)
-    m = mocker.patch('igniter.io.s3_client.S3Client._read', mock_read)
+    m = mocker.patch('igniter.io.s3_client.S3Client._read', mock_read)  # NOQA: F841
 
     client = S3Client('mybucket')
     response = client('folder', decoder='decode_cv_image')
@@ -49,7 +48,7 @@ def test_s3_client_pil_image(image, mocker):
         return to_s3_response(image_bytes)
 
     m = mocker.patch('igniter.io.s3_client.S3Client.get', mock_get)
-    m = mocker.patch('igniter.io.s3_client.S3Client._read', mock_read)
+    m = mocker.patch('igniter.io.s3_client.S3Client._read', mock_read)  # NOQA: F841
 
     client = S3Client('mybucket')
     response = client('folder')
@@ -74,7 +73,7 @@ def test_s3_client_json(mocker):
         return to_s3_response(byte_array)
 
     m = mocker.patch('igniter.io.s3_client.S3Client.get', mock_get)
-    m = mocker.patch('igniter.io.s3_client.S3Client._read', mock_read)
+    m = mocker.patch('igniter.io.s3_client.S3Client._read', mock_read)  # NOQA: F841
 
     client = S3Client('mybucket')
     response = client('folder', decoder='decode_json')
@@ -94,7 +93,7 @@ def test_s3_client_torch_weights(mocker):
         return to_s3_response(byte_state)
 
     m = mocker.patch('igniter.io.s3_client.S3Client.get', mock_get)
-    m = mocker.patch('igniter.io.s3_client.S3Client._read', mock_read)
+    m = mocker.patch('igniter.io.s3_client.S3Client._read', mock_read)  # NOQA: F841
 
     client = S3Client('mybucket')
     response = client('folder', decoder='decode_torch_weights')

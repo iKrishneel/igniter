@@ -3,7 +3,8 @@
 import os.path as osp
 
 import pytest
-import torchvision.transforms as TF
+
+# import torchvision.transforms as TF
 from omegaconf import OmegaConf
 
 from igniter.builder import build_dataloader
