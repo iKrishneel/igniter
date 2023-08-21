@@ -20,7 +20,7 @@ class S3Client(object):
     bucket_name: str
 
     def __post_init__(self) -> None:
-        assert len(self.bucket_name) > 0, f'Invalid bucket name'
+        assert len(self.bucket_name) > 0, f'Invalid bucket name {self.bucket_name}'
         logger.info(f'Data source is s3://{self.bucket_name}')
 
     def get(self, filename: str, ret_raw: bool = True):
@@ -72,7 +72,7 @@ class S3Client(object):
             logger.error(f'Error downloading file "{file_key}": {e}')
 
     def load_file(self, filename: str, decoder: Optional[Union[Callable, str]] = None):
-        assert len(filename) > 0, f'Invalid filename'
+        assert len(filename) > 0, f'Invalid filename {filename}'
         try:
             return self.decode_file(self.get(filename), decoder)
         except ClientError as e:

@@ -18,12 +18,7 @@ from torchvision.transforms import functional as TF
 from igniter import initiate
 from igniter.datasets import S3CocoDataset
 from igniter.logger import logger
-from igniter.registry import (
-    dataset_registry,
-    func_registry,
-    model_registry,
-    transform_registry,
-)
+from igniter.registry import dataset_registry, func_registry, model_registry, transform_registry
 
 version = version.parse(timm.__version__)
 assert version.minor == 6, f'Needs timm version 0.6.xx but found {timm.__version__}'
