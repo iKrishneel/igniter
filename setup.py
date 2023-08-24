@@ -22,7 +22,7 @@ install_requires = [
     'boto3',
     'pytest',
     'pytest-mock',
-    'pytorch-ignite @ git+https://github.com/pytorch/ignite@master',
+    'pytorch-ignite>=0.4.12',
     'tensorboard',
 ]
 
@@ -37,10 +37,23 @@ with open(f'{__name__}/__init__.py', 'r') as init_file:
 
 setup(
     name=__name__,
+    author='Krishneel',
+    email='krishneel@krishneel',
+    license='MIT',
+    url='https://github.com/iKrishneel/igniter',
     version=f'{__version__}',  # NOQA: F821
     long_description=readme,
     packages=find_packages(),
     zip_safe=False,
     install_requires=install_requires,
     test_suite='tests',
+    classifiers=[
+        'Development Status :: 4 - Beta',
+        'Intended Audience :: Developers',
+        'Topic :: Software Development :: Build Tools',
+        'License :: OSI Approved :: MIT License',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+    ],
 )

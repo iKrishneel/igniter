@@ -7,3 +7,5 @@ logs/*
 output*
 *.pth
 *.pt
+build/*
+dist/*
