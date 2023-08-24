@@ -14,7 +14,7 @@ class COCO(_COCO):
         print('loading annotations into memory...')
         tic = time.time()
         dataset = s3_client(annotation_filename)
-        assert type(dataset) == dict, 'annotation file format {} not supported'.format(type(dataset))
+        assert type(dataset) is dict, 'annotation file format {} not supported'.format(type(dataset))
         print('Done (t={:0.2f}s)'.format(time.time() - tic))
         self.dataset = dataset
         self.createIndex()

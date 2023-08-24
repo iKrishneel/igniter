@@ -22,7 +22,7 @@ class S3Dataset(Dataset):
         self.client = S3Client(bucket_name)
 
     def load_image(self, filename: str) -> np.ndarray:
-        check_str(filename, f'Filename is required')
+        check_str(filename, 'Filename is required')
         return self.client(filename)
 
     @abstractmethod
