@@ -27,7 +27,7 @@ def decode_cv_image(content) -> np.ndarray:
 
 
 @s3_utils_registry
-def decode_pil_image(content) -> np.ndarray:
+def decode_pil_image(content) -> Any:
     from PIL import Image
 
     return Image.open(BytesIO(content))

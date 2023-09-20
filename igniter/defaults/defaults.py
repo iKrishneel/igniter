@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from typing import Any, Dict
+
 import torch
 from omegaconf import DictConfig
 
@@ -30,7 +32,7 @@ def default_forward(engine, batch) -> None:
 
 
 @func_registry('default_val_forward')
-def default_val_forward(engine, batch) -> None:
+def default_val_forward(engine, batch) -> Dict[str, Any]:
     engine._model.eval()
     inputs, targets = batch
 

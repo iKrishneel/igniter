@@ -16,11 +16,14 @@ from .logger import logger
 
 def guard(func: Callable):
     @functools.wraps(func)
-    def _wrapper(config_file: str = None):
-        caller_frame = inspect.currentframe().f_back
-        caller_module = inspect.getmodule(caller_frame).__name__
-
-        caller_filename = inspect.getframeinfo(caller_frame).filename
+    def _wrapper(config_file: str = ''):
+        
+        caller_frame = getattr(inspect.currentframe(), 'f_back', None)
+        assert caller_frame is not None
+        caller_module = getattr(inspect.getmodule(caller_frame), '__name__', None)
+        assert caller_module is not None
+        caller_filename = getattr(inspect.getframeinfo(caller_frame), 'filename', None)
+        assert caller_filename is not None
         absolute_path = os.path.abspath(caller_filename)
 
         if caller_module == '__main__':
@@ -30,7 +33,7 @@ def guard(func: Callable):
 
 
 @guard
-def initiate(config_file: str, caller_path: str = None) -> None:
+def initiate(config_file: str, caller_path: str = '') -> None:
     assert os.path.isfile(config_file), f'Config file not found {config_file}'
     config_name = config_file.split(os.sep)[-1]
     config_path = config_file.replace(config_name, '')
@@ -49,7 +52,7 @@ def initiate(config_file: str, caller_path: str = None) -> None:
     _initiate()
 
 
-def run_flow(cfg: DictConfig, caller_path: str = None) -> None:
+def run_flow(cfg: DictConfig, caller_path: str = '') -> None:
     with open_dict(cfg):
         flows = cfg.pop('flow', None)
 

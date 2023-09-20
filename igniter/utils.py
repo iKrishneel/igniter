@@ -2,9 +2,10 @@
 
 import os.path as osp
 from enum import Enum
+from typing import Union
 
 import torch
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig, ListConfig, OmegaConf
 
 from .logger import logger
 
@@ -42,7 +43,7 @@ def check_str(string: str, msg: str = 'String is empty!'):
     assert len(string) > 0, msg
 
 
-def convert_bytes_to_human_readable(nbytes: int) -> str:
+def convert_bytes_to_human_readable(nbytes: float) -> str:
     suffixes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
     i = 0
     while nbytes >= 1024 and i < len(suffixes) - 1:
@@ -55,7 +56,7 @@ def model_name(cfg: DictConfig) -> str:
     return cfg.build.model
 
 
-def get_config(filename: str) -> DictConfig:
+def get_config(filename: str) -> Union[DictConfig, ListConfig]:
     assert osp.isfile(filename), f'Config file {filename} not found!'
     return OmegaConf.load(filename)
 

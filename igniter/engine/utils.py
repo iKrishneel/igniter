@@ -3,7 +3,7 @@
 import os
 import os.path as osp
 from collections import OrderedDict
-from typing import Any, Dict
+from typing import Any, Callable, Dict, Optional, Union
 
 import torch
 import torch.nn as nn
@@ -24,14 +24,14 @@ def _remap_keys(weight_dict) -> OrderedDict:
     return new_wpth
 
 
-def get_weights(cfg: DictConfig, **kwargs: Dict[str, Any]) -> OrderedDict:
+def get_weights(cfg: DictConfig, **kwargs: Dict[str, Any]) -> Union[Dict[str, Any], None]:
     weight_path = cfg.build[model_name(cfg)].get('weights', None) if isinstance(cfg, DictConfig) else cfg
     if not weight_path or len(weight_path) == 0:
         logger.warning('Weight is empty!'.upper())
-        return
+        return None
 
     state_dict = (
-        load_weights_from_s3(weight_path, kwargs.get('decoder', None))
+        load_weights_from_s3(weight_path, kwargs.get('decoder', None))  # type: ignore
         if 's3://' in weight_path
         else load_weights_from_file(weight_path)
     )
@@ -74,7 +74,7 @@ def load_weights(model: nn.Module, cfg: DictConfig, **kwargs):
     logger.info(f'{load_status}')
 
 
-def load_weights_from_s3(path: str, decoder: str = None) -> Dict[str, Any]:
+def load_weights_from_s3(path: str, decoder: Union[Callable[..., Any], str, None] = None) -> Dict[str, Any]:
     bucket_name = path[5:].split('/')[0]
     assert len(bucket_name) > 0, 'Invalid bucket name'
 
@@ -94,11 +94,11 @@ def load_weights_from_s3(path: str, decoder: str = None) -> Dict[str, Any]:
         torch.save(weights, root)
     else:
         s3_client.download(path, root)
-        weights = load_weights_from_file(root)
+        weights = load_weights_from_file(root)  # type: ignore
 
     logger.info(f'Saved model weight to cache: {root}')
 
-    return weights
+    return weights  # type: ignore
 
 
 def load_weights_from_file(path: str) -> Dict[str, torch.Tensor]:
