@@ -45,8 +45,8 @@ class InferenceEngine(object):
         if isinstance(config_file, DictConfig):
             cfg = config_file
         else:
-            assert osp.isfile(config_file), f'Not Found: {config_file}'
-            cfg = OmegaConf.load(config_file)
+            assert config_file and osp.isfile(config_file), f'Not Found: {config_file}'
+            cfg: DictConfig = OmegaConf.load(config_file)  # type: ignore
 
         if weights:
             with open_dict(cfg):
@@ -80,5 +80,5 @@ class InferenceEngine(object):
         if self.transforms:
             image = self.transforms(image)
 
-        image = image[None, :] if len(image.shape) == 3 else image
-        return self.model(image.to(self.device), **kwargs)  # .squeeze(0).cpu()
+        image = image[None, :] if len(image.shape) == 3 else image  # type: ignore
+        return self.model(image.to(self.device), **kwargs)  # type: ignore

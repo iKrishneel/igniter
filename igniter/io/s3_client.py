@@ -79,13 +79,13 @@ class S3Client(object):
             print(f'{e}\nFile Not Found! {filename}')
             return {}
 
-    def decode_file(self, s3_file, decoder: Optional[Union[Callable, str]] = None) -> Type[Any]:
+    def decode_file(self, s3_file, decoder: Optional[Union[Callable[..., Any], str]] = None) -> Type[Any]:
         content_type = s3_file['ResponseMetadata']['HTTPHeaders']['content-type']
         content = self._read(s3_file)
 
         decoder = lut.get(content_type, None) if not decoder else decoder
         assert decoder, f'Decoder for content type {content_type} is unknown'
-        func = s3_utils_registry[decoder]
+        func = s3_utils_registry[decoder]  # type: ignore
 
         assert func, 'Unknown decoder function'
         return func(content)

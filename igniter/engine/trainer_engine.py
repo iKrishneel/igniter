@@ -3,7 +3,7 @@
 import importlib
 import os
 from datetime import datetime
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, Union
 
 import ignite.distributed as idist
 import torch
@@ -27,7 +27,7 @@ class TrainerEngine(Engine):
         cfg: DictConfig,
         process_func: Callable,
         model: nn.Module,
-        dataloader: DataLoader,
+        dataloader: Union[DataLoader, Any],
         optimizer=None,
         io_ops: Optional[Dict[str, Callable]] = None,
         **kwargs,
@@ -144,7 +144,7 @@ class EvaluationEngine(Engine):
         cfg: DictConfig,
         process_func: Callable,
         model: nn.Module,
-        dataloader: DataLoader,
+        dataloader: Union[DataLoader, Any],
         io_ops: Optional[Dict[str, Callable]] = None,
         **kwargs,
     ) -> None:

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from dataclasses import dataclass, field
-from typing import Callable, Dict, Optional, Union
+from typing import Any, Callable, Dict, Optional, Union
 
 from tabulate import tabulate
 
@@ -38,7 +38,7 @@ class Registry(object):
     def get(self, name: str) -> Callable:
         return self[name]
 
-    def remove(self, name: str) -> Callable:
+    def remove(self, name: str) -> Any:
         return self.__REGISTRY.pop(name, None)
 
     def __repr__(self):

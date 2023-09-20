@@ -27,7 +27,7 @@ class S3IO(S3Client):
     def build(cls, io_cfg):
         return cls(bucket_name=io_cfg.bucket_name, root=io_cfg.root)
 
-    def __call__(self, data: Any, filename: str):
+    def __call__(self, data: Any, filename: str):  # type: ignore
         assert len(filename) > 0, 'Invalid filename'
 
         if len(filename.split('.')) == 1:

@@ -2,7 +2,7 @@
 
 import os.path as osp
 from abc import abstractmethod
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Callable, Optional, Tuple, Type
 
 import numpy as np
 from PIL import Image
@@ -21,7 +21,7 @@ class S3Dataset(Dataset):
         super(S3Dataset, self).__init__()
         self.client = S3Client(bucket_name)
 
-    def load_image(self, filename: str) -> np.ndarray:
+    def load_image(self, filename: str) -> Type[Any]:
         check_str(filename, 'Filename is required')
         return self.client(filename)
 
@@ -68,7 +68,7 @@ class S3CocoDataset(S3Dataset):
     def _load(self, iid: int) -> Tuple[Any, ...]:
         file_name = osp.join(self.root, self.coco.loadImgs(iid)[0]['file_name'])
         image = self.load_image(file_name)
-        image = Image.fromarray(image).convert('RGB')
+        image = Image.fromarray(image).convert('RGB')  # type: ignore
         target = self.coco.loadAnns(self.coco.getAnnIds(iid))
         return image, target
 

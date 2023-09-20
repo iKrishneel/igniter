@@ -44,7 +44,7 @@ def configurable(func: Callable):
 
 
 def build_transforms(cfg: DictConfig, mode: Optional[str] = None) -> Union[List[Any], Dict[str, List[Any]]]:
-    transforms = {mode: [] for mode in MODES}
+    transforms: Dict[str, List[Any]] = {mode: [] for mode in MODES}
     transforms_cfg = cfg.get('transforms', {})
     for key in transforms_cfg:
         attrs = dict(transforms_cfg[key])
@@ -63,9 +63,7 @@ def build_transforms(cfg: DictConfig, mode: Optional[str] = None) -> Union[List[
             transform_list.append(transform)
         transforms[key] = module.Compose(transform_list)
 
-    if mode:
-        transforms = transforms[mode]
-    return transforms
+    return transforms[mode] if mode else transforms
 
 
 @configurable
@@ -127,9 +125,9 @@ def add_profiler(engine: Engine, cfg: DictConfig):
     return profiler
 
 
-def build_io(cfg: DictConfig) -> Dict[str, Callable]:
+def build_io(cfg: DictConfig) -> Union[Dict[str, Callable], None]:
     if not cfg.get('io'):
-        return
+        return None
 
     def _build(cfg):
         engine = cfg.engine
@@ -144,16 +142,16 @@ def build_io(cfg: DictConfig) -> Dict[str, Callable]:
 
 
 @configurable
-def build_validation(model_name: str, cfg: DictConfig, trainer_engine: Engine) -> Engine:
+def build_validation(model_name: str, cfg: DictConfig, trainer_engine: Engine) -> Union[Engine, None]:
     if not cfg.build[model_name].get('val', None):
         logger.warning('Not validation config found. Validation will be skipped')
-        return
+        return None
 
     logger.info('Adding validation')
     val_attrs = cfg.build[model_name].val
     process_func = build_func(val_attrs.get('func', 'default_val_forward'))
     dataloader = build_dataloader(cfg, 'val')
-    val_engine = engine_registry['default_evaluation'](cfg, process_func, trainer_engine._model, dataloader)
+    val_engine = engine_registry['default_evaluation'](cfg, process_func, getattr(trainer_engine, '_model'), dataloader)
 
     # evaluation metric
     metric_name = val_attrs.get('metric', None)
@@ -165,7 +163,7 @@ def build_validation(model_name: str, cfg: DictConfig, trainer_engine: Engine) -
 
     # TODO: Check if step and epochs are valid
     event_name = Events.EPOCH_COMPLETED(every=epoch)
-    event_name = event_name | Events.ITERATION_COMPLETED(every=step) if step else event_name
+    event_name = event_name | Events.ITERATION_COMPLETED(every=step) if step else event_name  # type: ignore
 
     @trainer_engine.on(event_name | Events.STARTED)
     def _run_eval():
@@ -182,6 +180,8 @@ def build_validation(model_name: str, cfg: DictConfig, trainer_engine: Engine) -
         if metric_name:
             accuracy = val_engine.state.metrics[metric_name]
             print(f'Accuracy: {accuracy:.2f}')
+
+    return trainer_engine
 
 
 def validate_config(cfg: DictConfig):
@@ -247,7 +247,7 @@ def build_engine(model_name, cfg: DictConfig, mode: str = 'train') -> Callable:
     return engine
 
 
-def _trainer(rank: int, cfg: DictConfig) -> None:
+def _trainer(rank: Union[int, None], cfg: DictConfig) -> None:
     trainer = build_engine(cfg)
     trainer()
 
