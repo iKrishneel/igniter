@@ -3,7 +3,7 @@
 import os
 import os.path as osp
 from collections import OrderedDict
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Callable, Dict, Union
 
 import torch
 import torch.nn as nn

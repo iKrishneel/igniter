@@ -17,7 +17,6 @@ from .logger import logger
 def guard(func: Callable):
     @functools.wraps(func)
     def _wrapper(config_file: str = ''):
-        
         caller_frame = getattr(inspect.currentframe(), 'f_back', None)
         assert caller_frame is not None
         caller_module = getattr(inspect.getmodule(caller_frame), '__name__', None)
