@@ -60,6 +60,7 @@ jobs:
         run: |
           # pip3 install -e ${{ env.REPO_NAME }}
           pip3 install mypy --upgrade
+          pip3 install types-requests
 
       - name: Running MyPy
         run : |
