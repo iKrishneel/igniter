@@ -58,7 +58,7 @@ jobs:
 
       - name: Installation MyPy and Deps
         run: |
-          pip3 install mypy
+          pip3 install mypy --upgrade
           yes | mypy --install-types
 
       - name: Running MyPy
