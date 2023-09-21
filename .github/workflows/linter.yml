@@ -59,8 +59,7 @@ jobs:
       - name: Installation MyPy and Deps
         run: |
           pip3 install -e ${{ env.REPO_NAME }}
-          pip3 install mypy --upgrade          
-          yes | mypy --install-types
+          pip3 install mypy --upgrade
 
       - name: Running MyPy
         run : |
