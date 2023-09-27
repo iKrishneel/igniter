@@ -68,7 +68,7 @@ class S3CocoDataset(S3Dataset):
     def _load(self, iid: int) -> Tuple[Any, ...]:
         file_name = osp.join(self.root, self.coco.loadImgs(iid)[0]['file_name'])
         image = self.load_image(file_name)
-        image = Image.fromarray(image).convert('RGB')  # type: ignore
+        image = Image.fromarray(image).convert('RGB') if not isinstance(image, Image.Image) else image  # type: ignore
         target = self.coco.loadAnns(self.coco.getAnnIds(iid))
         return image, target
 

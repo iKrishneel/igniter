@@ -203,6 +203,7 @@ def validate_config(cfg: DictConfig):
 
 @configurable
 def build_engine(model_name, cfg: DictConfig, mode: str = 'train') -> Callable:
+    logger.info(f'>>> Building Engine with mode {mode}')
     validate_config(cfg)
 
     assert mode in MODES, f'Mode must be one of {MODES} but got {mode}'
@@ -229,7 +230,9 @@ def build_engine(model_name, cfg: DictConfig, mode: str = 'train') -> Callable:
         dataloader = build_dataloader(cfg, mode)
         scheduler = build_scheduler(cfg, optimizer, dataloader)
 
-        engine = engine_registry['default_trainer'](
+        engine_name = cfg.build[model_name]['train'].get('engine', 'default_trainer')
+        logger.info(f'>>> Trainer engine: {engine_name}')
+        engine = engine_registry[engine_name](
             cfg, process_func, model, dataloader, optimizer=optimizer, io_ops=io_ops, scheduler=scheduler
         )
         build_validation(cfg, engine)
@@ -242,6 +245,7 @@ def build_engine(model_name, cfg: DictConfig, mode: str = 'train') -> Callable:
     else:
         attrs = cfg.build[model_name].get('inference', None)
         name = attrs.get('engine', 'default_inference') if attrs else 'default_inference'
+        logger.info(f'>>> Inference engine: {engine_name}')        
         engine = engine_registry[name](cfg)
 
     return engine
