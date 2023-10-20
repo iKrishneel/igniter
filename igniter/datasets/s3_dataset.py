@@ -46,6 +46,7 @@ class S3CocoDataset(S3Dataset):
         self.coco = COCO(self.client, anno_fn)
         self.ids = list(sorted(self.coco.imgs.keys()))
         self.transforms = transforms
+        self.apply_transforms = True
 
         # TODO: Add target transforms
         if transforms:
@@ -58,7 +59,7 @@ class S3CocoDataset(S3Dataset):
         while True:
             try:
                 image, target = self._load(iid)
-                if self.transforms:
+                if self.transforms and self.apply_transforms:
                     image = self.transforms(image)
                 return image, target
             except Exception as e:

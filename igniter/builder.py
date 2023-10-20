@@ -207,7 +207,8 @@ def build_engine(model_name, cfg: DictConfig, mode: str = 'train') -> Callable:
     validate_config(cfg)
 
     assert mode in MODES, f'Mode must be one of {MODES} but got {mode}'
-    os.makedirs(cfg.workdir.path, exist_ok=True)
+    if 'workdir' in cfg:
+        os.makedirs(cfg.workdir.path, exist_ok=True)
 
     yaml_data = OmegaConf.to_yaml(cfg)
     logger.info(f'\033[32m\n{yaml_data} \033[0m')
