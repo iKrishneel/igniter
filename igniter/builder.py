@@ -244,9 +244,9 @@ def build_engine(model_name, cfg: DictConfig, mode: str = 'train') -> Callable:
             module.load_weights(model, cfg)
     else:
         attrs = cfg.build[model_name].get('inference', None)
-        name = attrs.get('engine', 'default_inference') if attrs else 'default_inference'
-        logger.info(f'>>> Inference engine: {engine_name}')        
-        engine = engine_registry[name](cfg)
+        engine_name = attrs.get('engine', 'default_inference') if attrs else 'default_inference'
+        logger.info(f'>>> Inference engine: {engine_name}')
+        engine = engine_registry[engine_name](cfg)
 
     return engine
 
