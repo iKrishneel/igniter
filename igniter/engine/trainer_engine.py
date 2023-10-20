@@ -159,6 +159,8 @@ class EvaluationEngine(Engine):
             dataloader = idist.auto_dataloader(
                 dataloader.dataset, collate_fn=build_func(attrs.pop('collate_fn', 'collate_fn')), **attrs
             )
+        else:
+            model = model.to(get_device(cfg))
 
         self._cfg = cfg
         self._model = model

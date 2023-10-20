@@ -28,6 +28,8 @@ def is_distributed(cfg: DictConfig) -> bool:
     if not torch.cuda.is_available():
         logger.warning('No CUDA Available!')
         return False
+    if 'distributed' not in cfg:
+        return False
     return get_world_size(cfg) > 0 and torch.cuda.device_count() > 1 and cfg.distributed.nproc_per_node > 1
 
 

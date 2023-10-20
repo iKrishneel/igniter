@@ -224,29 +224,40 @@ def build_engine(model_name, cfg: DictConfig, mode: str = 'train') -> Callable:
 
     # TODO: Remove hardcoded name and replace with registry based
     logger.warning('# TODO: Remove hardcoded name and replace with registry based')
-    if mode == 'train':
-        optimizer = build_optim(cfg, model)
+    if mode in ['train', 'val']:
         io_ops = build_io(cfg)
         dataloader = build_dataloader(cfg, mode)
-        scheduler = build_scheduler(cfg, optimizer, dataloader)
 
-        engine_name = cfg.build[model_name]['train'].get('engine', 'default_trainer')
-        logger.info(f'>>> Trainer engine: {engine_name}')
-        engine = engine_registry[engine_name](
-            cfg, process_func, model, dataloader, optimizer=optimizer, io_ops=io_ops, scheduler=scheduler
-        )
-        build_validation(cfg, engine)
+        if mode == 'train':
+            optimizer = build_optim(cfg, model)
+            scheduler = build_scheduler(cfg, optimizer, dataloader)
 
-        module = importlib.import_module('igniter.engine.utils')
-        if cfg.get('options', {}).get('resume'):
-            module.load_all(engine, cfg)
+            engine_name = cfg.build[model_name]['train'].get('engine', 'default_trainer')
+            logger.info(f'>>> Trainer engine: {engine_name}')
+            engine = engine_registry[engine_name](
+                cfg, process_func, model, dataloader, optimizer=optimizer, io_ops=io_ops, scheduler=scheduler
+            )
+
+            build_validation(cfg, engine)
+
+            module = importlib.import_module('igniter.engine.utils')
+            if cfg.get('options', {}).get('resume'):
+                module.load_all(engine, cfg)
+            else:
+                module.load_weights(model, cfg)
         else:
-            module.load_weights(model, cfg)
-    else:
-        attrs = cfg.build[model_name].get('inference', None)
+            attrs = cfg.build[model_name].get('val', None)
+            engine_name = attrs.get('engine') or 'default_evaluation'
+            logger.info(f'>>> Evaluation engine: {engine_name}, {process_func}')
+            engine = engine_registry[engine_name](cfg, process_func, model, dataloader, io_ops)
+    elif mode in ['test', 'inference']:
+        key = 'test' if 'test' in cfg.build[model_name] else 'inference'
+        attrs = cfg.build[model_name].get(key, None)
         engine_name = attrs.get('engine', 'default_inference') if attrs else 'default_inference'
         logger.info(f'>>> Inference engine: {engine_name}')
         engine = engine_registry[engine_name](cfg)
+    else:
+        raise TypeError(f'Unknown mode {mode}')
 
     return engine
 
