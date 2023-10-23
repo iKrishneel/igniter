@@ -55,6 +55,7 @@ solver_registry = Registry(name='Solver Registry')
 io_registry = Registry(name='IO Registry')
 func_registry = Registry(name='Proc Registry')
 transform_registry = Registry(name='Transform Registry')
+event_registry = Registry(name="Event Handlers Registry")
 
 # for backward compatibility
 proc_registry = func_registry

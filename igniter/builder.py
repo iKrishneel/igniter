@@ -17,6 +17,7 @@ from igniter.logger import logger
 from igniter.registry import (
     dataset_registry,
     engine_registry,
+    event_registry,
     func_registry,
     io_registry,
     model_registry,
@@ -114,6 +115,25 @@ def build_scheduler(model_name: str, cfg: DictConfig, optimizer: nn.Module, data
     return getattr(module, name)(optimizer=optimizer, **args)
 
 
+@configurable
+def build_event_handlers(model_name: str, cfg: DictConfig, engine: Engine) -> None:
+    _cfg = cfg.build[model_name]
+    attribut_name = 'event_handlers'
+
+    def _build(events: List[Dict[str, str]]) -> None:
+        
+        for event in events:
+            for func_name, event_args in event.items():
+                # TODO: Handle chained event types
+                event_type = event_args.pop('event_type')
+                engine.add_event_handler(event_type, event_registry[func_name], **event_args)
+    
+    for mode in MODES:
+        if mode not in _cfg:
+            continue
+        _build(_cfg[mode].get(attribut_name, []))
+
+
 def add_profiler(engine: Engine, cfg: DictConfig):
     profiler = BasicTimeProfiler()
     profiler.attach(engine)
@@ -162,10 +182,10 @@ def build_validation(model_name: str, cfg: DictConfig, trainer_engine: Engine) -
     epoch = val_attrs.get('epoch', 1)
 
     # TODO: Check if step and epochs are valid
-    event_name = Events.EPOCH_COMPLETED(every=epoch)
-    event_name = event_name | Events.ITERATION_COMPLETED(every=step) if step else event_name  # type: ignore
+    event_type = Events.EPOCH_COMPLETED(every=epoch)
+    event_type = event_type | Events.ITERATION_COMPLETED(every=step) if step else event_type  # type: ignore
 
-    @trainer_engine.on(event_name | Events.STARTED)
+    @trainer_engine.on(event_type | Events.STARTED)
     def _run_eval():
         logger.info('Running validation')
         val_engine()
@@ -259,6 +279,9 @@ def build_engine(model_name, cfg: DictConfig, mode: str = 'train') -> Callable:
         engine = engine_registry[engine_name](cfg)
     else:
         raise TypeError(f'Unknown mode {mode}')
+
+    if engine:
+        build_event_handlers(cfg, engine)
 
     return engine
 
