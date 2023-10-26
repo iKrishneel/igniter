@@ -88,9 +88,9 @@ def _exec(caller_path: str, directory: str, filename: str) -> bool:
 
 def _run(cfg: DictConfig) -> None:
     mode = cfg.build.get('mode', 'train')
-    if mode == 'train':
+    if mode in ['train', 'val']:
         trainer(cfg)
-    elif mode in ['val', 'test', 'inference']:
+    elif mode in ['test', 'inference']:
         from igniter.registry import func_registry
         from igniter.utils import model_name
 

@@ -14,7 +14,7 @@ lut = {
     'image': 'decode_pil_image',
     'image/jpeg': 'decode_pil_image',
     'json': 'decode_json',
-    'application/json': 'decode_json',    
+    'application/json': 'decode_json',
     'torch': 'decode_torch_weights',
 }
 
