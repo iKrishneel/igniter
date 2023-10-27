@@ -121,13 +121,12 @@ def build_event_handlers(model_name: str, cfg: DictConfig, engine: Engine) -> No
     attribut_name = 'event_handlers'
 
     def _build(events: List[Dict[str, str]]) -> None:
-        
         for event in events:
             for func_name, event_args in event.items():
                 # TODO: Handle chained event types
                 event_type = event_args.pop('event_type')
                 engine.add_event_handler(event_type, event_registry[func_name], **event_args)
-    
+
     for mode in MODES:
         if mode not in _cfg:
             continue
@@ -222,7 +221,10 @@ def validate_config(cfg: DictConfig):
 
 
 @configurable
-def build_engine(model_name, cfg: DictConfig, mode: str = 'train') -> Callable:
+def build_engine(model_name, cfg: DictConfig) -> Callable:
+    mode = cfg.build.get('mode', 'train')
+    assert mode in MODES, f'Invalid mode {mode}. Must be one of {MODES}'
+
     logger.info(f'>>> Building Engine with mode {mode}')
     validate_config(cfg)
 
@@ -260,17 +262,17 @@ def build_engine(model_name, cfg: DictConfig, mode: str = 'train') -> Callable:
             )
 
             build_validation(cfg, engine)
-
-            module = importlib.import_module('igniter.engine.utils')
-            if cfg.get('options', {}).get('resume'):
-                module.load_all(engine, cfg)
-            else:
-                module.load_weights(model, cfg)
         else:
             attrs = cfg.build[model_name].get('val', None)
             engine_name = attrs.get('engine') or 'default_evaluation'
             logger.info(f'>>> Evaluation engine: {engine_name}, {process_func}')
             engine = engine_registry[engine_name](cfg, process_func, model, dataloader, io_ops)
+
+        module = importlib.import_module('igniter.engine.utils')
+        if cfg.get('options', {}).get('resume'):
+            module.load_all(engine, cfg)
+        else:
+            module.load_weights(model, cfg)
     elif mode in ['test', 'inference']:
         key = 'test' if 'test' in cfg.build[model_name] else 'inference'
         attrs = cfg.build[model_name].get(key, None)
