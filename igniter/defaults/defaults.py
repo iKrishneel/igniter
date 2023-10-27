@@ -15,12 +15,17 @@ __all__ = ['default_forward', 'default_val_forward', 'default_collate_fn']
 def default_forward(engine, batch) -> None:
     engine._model.train()
     inputs, targets = batch
-    engine._optimizer.zero_grad()
     losses = engine._model(inputs, targets)
 
-    for key in losses:
-        losses[key].backward()
+    if isinstance(losses, dict):
+        loss_sum = sum(losses.values())
+        losses['total_loss'] = loss_sum
+    else:
+        loss_sum = losses
+        losses = {'total_loss': loss_sum}
 
+    engine._optimizer.zero_grad()        
+    loss_sum.backward()
     engine._optimizer.step()
     losses['lr'] = engine.get_lr()
 
