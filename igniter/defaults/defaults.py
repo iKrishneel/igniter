@@ -24,7 +24,7 @@ def default_forward(engine, batch) -> None:
         loss_sum = losses
         losses = {'total_loss': loss_sum}
 
-    engine._optimizer.zero_grad()        
+    engine._optimizer.zero_grad()
     loss_sum.backward()
     engine._optimizer.step()
     losses['lr'] = engine.get_lr()
@@ -36,6 +36,7 @@ def default_forward(engine, batch) -> None:
     engine.state.metrics = losses
 
 
+@func_registry('default_evaluation')
 @func_registry('default_val_forward')
 def default_val_forward(engine, batch) -> Dict[str, Any]:
     engine._model.eval()
