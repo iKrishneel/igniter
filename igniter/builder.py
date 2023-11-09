@@ -117,6 +117,7 @@ def build_scheduler(model_name: str, cfg: DictConfig, optimizer: nn.Module, data
 
 @configurable
 def build_event_handlers(model_name: str, cfg: DictConfig, engine: Engine) -> None:
+    # TODO: iterate over entire config and enable adding event_handlers
     _cfg = cfg.build[model_name]
     attribut_name = 'event_handlers'
 
@@ -125,12 +126,6 @@ def build_event_handlers(model_name: str, cfg: DictConfig, engine: Engine) -> No
             event_args = dict(events[func_name])
             event_type = event_args.pop('event_type')
             engine.add_event_handler(event_type, event_registry[func_name], **event_args)
-
-            # for func_name, event_args in event.items():
-            #     # TODO: Handle chained event types
-            #     event_args = dict(event_args)
-            #     event_type = event_args.pop('event_type')
-            #     engine.add_event_handler(event_type, event_registry[func_name], **event_args)
 
     for mode in MODES:
         if mode not in _cfg:
@@ -173,7 +168,7 @@ def build_validation(model_name: str, cfg: DictConfig, trainer_engine: Engine) -
 
     logger.info('Adding validation')
     val_attrs = cfg.build[model_name].val
-    process_func = build_func(val_attrs.get('func', 'default_val_forward'))
+    process_func = build_func(val_attrs.get('func', 'default_evaluation'))
     dataloader = build_dataloader(cfg, 'val')
     val_engine = engine_registry['default_evaluation'](cfg, process_func, getattr(trainer_engine, '_model'), dataloader)
 
@@ -252,11 +247,15 @@ def build_engine(model_name, cfg: DictConfig) -> Callable:
 
     # TODO: Remove hardcoded name and replace with registry based
     logger.warning('# TODO: Remove hardcoded name and replace with registry based')
+
+    options = get_options(cfg)
+
     if mode in ['train', 'val']:
         io_ops = build_io(cfg)
-        dataloader = build_dataloader(cfg, mode)
 
-        if mode == 'train':
+        # if mode == 'train':
+        if options.train:
+            dataloader = build_dataloader(cfg, mode)
             optimizer = build_optim(cfg, model)
             scheduler = build_scheduler(cfg, optimizer, dataloader)
 
@@ -266,15 +265,23 @@ def build_engine(model_name, cfg: DictConfig) -> Callable:
                 cfg, process_func, model, dataloader, optimizer=optimizer, io_ops=io_ops, scheduler=scheduler
             )
 
-            build_validation(cfg, engine)
-        else:
+            if options.eval:
+                build_validation(cfg, engine)
+            # elif mode == 'val' and options.eval:
+        elif options.eval:
             attrs = cfg.build[model_name].get('val', None)
+            assert attrs, 'Validation attributes are required when options.eval=True'
             engine_name = attrs.get('engine') or 'default_evaluation'
+            process_func = build_func(attrs.get('func', 'default_evaluation'))
             logger.info(f'>>> Evaluation engine: {engine_name}, {process_func}')
+            dataloader = build_dataloader(cfg, 'val')
             engine = engine_registry[engine_name](cfg, process_func, model, dataloader, io_ops)
             engine._model.eval()
+        else:
+            logger.warning('Nothing to do as both eval and train are False')
+            return
         module = importlib.import_module('igniter.engine.utils')
-        if cfg.get('options', {}).get('resume'):
+        if options.resume:
             module.load_all(engine, cfg)
         else:
             module.load_weights(model, cfg)
@@ -291,6 +298,12 @@ def build_engine(model_name, cfg: DictConfig) -> Callable:
         build_event_handlers(cfg, engine)
 
     return engine
+
+
+def get_options(cfg: DictConfig) -> DictConfig:
+    defaults = OmegaConf.create({'resume': False, 'eval': False, 'train': True, 'test': False})
+    options = OmegaConf.merge(defaults, cfg.options)
+    return options
 
 
 def _trainer(rank: Union[int, None], cfg: DictConfig) -> None:
