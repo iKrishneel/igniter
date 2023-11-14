@@ -5,7 +5,7 @@ import inspect
 import os
 import subprocess
 from copy import deepcopy
-from typing import Callable
+from typing import Any, Callable, Dict
 
 import hydra
 from omegaconf import DictConfig, OmegaConf, open_dict
@@ -31,6 +31,20 @@ def guard(func: Callable):
     return _wrapper
 
 
+def configure(func: Callable):
+    @functools.wraps(func)
+    def _wrapper(cfg: DictConfig, caller_path: str = '', **kwargs: Dict[str, Any]) -> Any:
+        OmegaConf.set_struct(cfg, False)
+
+        default_cfg = OmegaConf.load(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'configs/config.yaml'))
+        cfg = OmegaConf.merge(default_cfg, cfg)
+
+        OmegaConf.set_struct(cfg, True)
+        return func(cfg, caller_path, **kwargs)
+
+    return _wrapper
+    
+
 @guard
 def initiate(config_file: str, caller_path: str = '') -> None:
     assert os.path.isfile(config_file), f'Config file not found {config_file}'
@@ -51,6 +65,7 @@ def initiate(config_file: str, caller_path: str = '') -> None:
     _initiate()
 
 
+@configure
 def run_flow(cfg: DictConfig, caller_path: str = '') -> None:
     with open_dict(cfg):
         flows = cfg.pop('flow', None)
