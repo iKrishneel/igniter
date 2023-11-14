@@ -13,6 +13,12 @@ distributed:
 transforms:
 
 datasets:
+  dataloader:
+    batch_size: 1
+    num_workers: 0
+    shuffle: True
+    pin_memory: True
+    collate_fn: "collate_fn"
 
 models:
 
@@ -23,5 +29,7 @@ io:
 build:
 
 options:
+  train: True
+  eval: True
 
 flow:

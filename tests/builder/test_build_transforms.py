@@ -53,6 +53,6 @@ def test_build_transforms_all(cfg):
 
 
 def test_build_transforms_wrong_mode(cfg):
-    transform_dict = build_transforms(cfg, None)
-    assert isinstance(transform_dict, dict)
-    # assert len(transform_dict) == 0
+    with pytest.raises(AssertionError):
+        transform_dict = build_transforms(cfg, 'Train2') or {}
+        assert isinstance(transform_dict, dict)

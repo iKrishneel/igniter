@@ -44,12 +44,15 @@ def configurable(func: Callable):
     return wrapper
 
 
-def build_transforms(cfg: DictConfig, mode: Optional[str] = None) -> Union[List[Any], Dict[str, List[Any]]]:
-    transforms: Dict[str, List[Any]] = {mode: [] for mode in MODES}
+def build_transforms(cfg: DictConfig, name: Optional[str] = None) -> Union[List[Any], Dict[str, List[Any]]]:
+    if name is not None:
+        assert name in cfg.transforms, f'{name} not found. Available keys in transforms are: {cfg.transforms.keys()}'
     transforms_cfg = cfg.get('transforms', {})
+
+    transforms: Dict[str, List[Any]] = {name: []}
     for key in transforms_cfg:
         attrs = dict(transforms_cfg[key])
-        if mode and key != mode or attrs is None:
+        if name and key != name or attrs is None:
             continue
 
         engine = attrs.pop('engine', 'torchvision.transforms')
@@ -64,7 +67,7 @@ def build_transforms(cfg: DictConfig, mode: Optional[str] = None) -> Union[List[
             transform_list.append(transform)
         transforms[key] = module.Compose(transform_list)
 
-    return transforms[mode] if mode else transforms
+    return transforms[name] if name else transforms
 
 
 @configurable
@@ -74,12 +77,12 @@ def build_dataloader(model_name: str, cfg: DictConfig, mode: str) -> DataLoader:
     name = cfg.build[model_name].dataset
     attrs = cfg.datasets[name].get(mode, None)
     kwargs = dict(cfg.datasets.dataloader)
-    assert attrs, f'{mode} not found in datasets'
-
+    
     cls = dataset_registry[name]
-    transforms = build_transforms(cfg, mode)
+    transforms = build_transforms(cfg, cfg.build[model_name].get('transforms') or mode)
     collate_fn = build_func(kwargs.pop('collate_fn', 'collate_fn'))
     dataset = cls(**{**dict(attrs), 'transforms': transforms})
+   
     return DataLoader(dataset, collate_fn=collate_fn, **kwargs)
 
 

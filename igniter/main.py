@@ -14,7 +14,7 @@ from .builder import trainer
 from .logger import logger
 
 
-def guard(func: Callable):
+def guard(func: Callable) -> Callable:
     @functools.wraps(func)
     def _wrapper(config_file: str = ''):
         caller_frame = getattr(inspect.currentframe(), 'f_back', None)
@@ -31,19 +31,32 @@ def guard(func: Callable):
     return _wrapper
 
 
-def configure(func: Callable):
+def configure(func: Callable) -> Callable:
     @functools.wraps(func)
-    def _wrapper(cfg: DictConfig, caller_path: str = '', **kwargs: Dict[str, Any]) -> Any:
+    def _wrapper(cfg: DictConfig, config_file: str, caller_path: str = '', **kwargs: Dict[str, Any]) -> Any:
         OmegaConf.set_struct(cfg, False)
 
         default_cfg = OmegaConf.load(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'configs/config.yaml'))
         cfg = OmegaConf.merge(default_cfg, cfg)
 
+        if '_base_' in cfg:
+            filename = os.path.join(hydra.utils.get_original_cwd(), os.path.dirname(config_file), cfg._base_)
+            base_cfg = read_base_configs(filename)
+            cfg = OmegaConf.merge(base_cfg, cfg)
+
         OmegaConf.set_struct(cfg, True)
         return func(cfg, caller_path, **kwargs)
 
     return _wrapper
-    
+
+
+def read_base_configs(filename: str) -> DictConfig:
+    assert os.path.isfile(filename), f'File not found {filename}'
+    cfg = OmegaConf.load(filename)
+    base_cfg = read_base_configs(os.path.join(os.path.dirname(filename), cfg._base_)) if '_base_' in cfg else {}
+    cfg = OmegaConf.merge(base_cfg, cfg)
+    return cfg
+
 
 @guard
 def initiate(config_file: str, caller_path: str = '') -> None:
@@ -57,10 +70,10 @@ def initiate(config_file: str, caller_path: str = '') -> None:
     kwargs = dict(version_base=None, config_path=config_path, config_name=config_name)
     if hydra.__version__ < '1.2':
         kwargs.pop('version_base', None)
-
+        
     @hydra.main(**kwargs)
     def _initiate(cfg: DictConfig):
-        run_flow(cfg, caller_path)
+        run_flow(cfg, config_file, caller_path)
 
     _initiate()
 
@@ -75,7 +88,7 @@ def run_flow(cfg: DictConfig, caller_path: str = '') -> None:
 
     cfg_copy = deepcopy(cfg)
 
-    directory = '/tmp/igniter/flow/'
+    directory = '/tmp/igniter/.flow/'
     os.makedirs(directory, exist_ok=True)
     for flow in flows:
         with open_dict(cfg_copy):
