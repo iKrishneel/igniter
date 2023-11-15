@@ -18,6 +18,7 @@ def cfg():
 
 
 def test_build_dataloader(cfg):
+    print(cfg)
     for mode in ['train', 'val']:
         dataloader = build_dataloader(cfg, mode='train')
         assert dataloader

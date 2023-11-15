@@ -26,6 +26,6 @@ build:
     dataset: "test_dataset"
     weights: "/tmp/igniter/tests/model.pth"
     train:
-      data
+      transforms: train
 
   model: "test_model"

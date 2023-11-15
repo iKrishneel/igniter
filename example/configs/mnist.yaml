@@ -4,7 +4,7 @@ workdir:
   path: "/tmp/dist/mnist"
 
 transforms:
-  train1: &trans
+  train: &trans
     engine: "torchvision.transforms"
     ToTensor:
     Normalize:
@@ -54,16 +54,17 @@ io:
 build:
   mnist:
     dataset: "mnist"
-    transforms: "train1"
     train:
       solver: "SGD"
       scheduler: "StepLR"
       epochs: 10
       func: "default"
+      transforms: "train"
     val:
       epoch: 1
       # step: 256
       metric: "accuracy"
+      transforms: "val"
 
   model: "mnist"
 

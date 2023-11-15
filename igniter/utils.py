@@ -2,7 +2,7 @@
 
 import os.path as osp
 from enum import Enum
-from typing import Union
+from typing import Tuple, Union
 
 import torch
 from omegaconf import DictConfig, ListConfig, OmegaConf
@@ -78,3 +78,10 @@ def loggable_model_info(model: torch.nn.Module) -> str:
         ['Total', f'{total_params: ,}'],
     ]
     return tabulate(table, header, tablefmt='grid')
+
+
+def get_dir_and_file_name(path: str, abs_path: bool = True, remove_ext: bool = True) -> Tuple[str, str]:
+    dirname, filename = osp.dirname(path), osp.basename(path)
+    filename = osp.splitext(filename)[0] if remove_ext else filename
+    dirname = osp.abspath(dirname) if abs_path and not osp.isabs(dirname) else dirname
+    return dirname, filename

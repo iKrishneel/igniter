@@ -5,13 +5,14 @@ import inspect
 import os
 import subprocess
 from copy import deepcopy
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Tuple
 
 import hydra
 from omegaconf import DictConfig, OmegaConf, open_dict
 
 from .builder import trainer
 from .logger import logger
+from .utils import get_dir_and_file_name
 
 
 def guard(func: Callable) -> Callable:
@@ -34,17 +35,49 @@ def guard(func: Callable) -> Callable:
 def configure(func: Callable) -> Callable:
     @functools.wraps(func)
     def _wrapper(cfg: DictConfig, config_file: str, caller_path: str = '', **kwargs: Dict[str, Any]) -> Any:
-        OmegaConf.set_struct(cfg, False)
-        if '_base_' in cfg:
-            filename = os.path.join(hydra.utils.get_original_cwd(), os.path.dirname(config_file), cfg._base_)
-            base_cfg = read_base_configs(filename)
-            cfg = OmegaConf.merge(base_cfg, cfg)
-        else:
-            cfg = load_default(cfg)
-        OmegaConf.set_struct(cfg, True)
+        cfg = _full_config(cfg, config_file)
         return func(cfg, caller_path, **kwargs)
 
     return _wrapper
+
+
+def _full_config(cfg: DictConfig, config_file: str, config_dir: str = None) -> DictConfig:
+    OmegaConf.set_struct(cfg, False)
+
+    config_dir = os.path.join(
+        hydra.utils.get_original_cwd(), os.path.dirname(config_file)
+    ) if config_dir is None else config_dir
+    if '_base_' in cfg:
+        filename = os.path.join(config_dir, cfg._base_)
+        base_cfg = read_base_configs(filename)
+        cfg = OmegaConf.merge(base_cfg, cfg)
+    else:
+        cfg = load_default(cfg)
+
+    # TODO: load _file_ attributes for keys            
+    # cfg = load_values_from_file(config_dir, cfg)
+
+    OmegaConf.set_struct(cfg, True)
+    return cfg
+
+
+def load_values_from_file(config_dir: str, cfg: DictConfig) -> DictConfig:
+    """
+    Current implementation only supports top level keys to use this
+    """
+    assert os.path.isdir(config_dir), f'Invalid directory {config_dir}'
+
+    for key in cfg:
+        value = cfg[key]
+        if isinstance(value, str) and '.yaml' in value:
+            filename = value if os.path.isabs(value) else os.path.join(config_dir, value)
+            assert os.path.isfile(filename), f'{value} file not found at {filename}'
+            conf = OmegaConf.load(filename)
+            cfg[key] = conf[key]
+        if isinstance(value, DictConfig):
+            load_values_from_file(config_dir, value)
+
+    return cfg
 
 
 def load_default(cfg: DictConfig) -> DictConfig:
@@ -65,15 +98,21 @@ def read_base_configs(filename: str) -> DictConfig:
     return cfg
 
 
+def get_full_config(config_file: str, caller_path: str = '') -> DictConfig:
+    from hydra import compose, initialize_config_dir
+
+    config_path, config_name = get_dir_and_file_name(config_file, True)
+    with initialize_config_dir(version_base=None, config_dir=config_path, job_name='full_config'):
+        cfg = compose(config_name=config_name)
+        cfg = _full_config(cfg, config_file, config_dir=config_path)
+    return cfg
+
+
 @guard
 def initiate(config_file: str, caller_path: str = '') -> None:
     assert os.path.isfile(config_file), f'Config file not found {config_file}'
-    config_name = config_file.split(os.sep)[-1]
-    config_path = config_file.replace(config_name, '')
-    config_name = config_name.split('.')[0]
 
-    config_path = os.path.abspath(config_path) if not os.path.isabs(config_path) else config_path
-
+    config_path, config_name = get_dir_and_file_name(config_file)
     kwargs = dict(version_base=None, config_path=config_path, config_name=config_name)
     if hydra.__version__ < '1.2':
         kwargs.pop('version_base', None)

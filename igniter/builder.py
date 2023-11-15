@@ -74,16 +74,19 @@ def build_transforms(cfg: DictConfig, name: Optional[str] = None) -> Union[List[
 def build_dataloader(model_name: str, cfg: DictConfig, mode: str) -> DataLoader:
     logger.info(f'Building {mode} dataloader')
 
-    name = cfg.build[model_name].dataset
-    attrs = cfg.datasets[name].get(mode, None)
-    kwargs = dict(cfg.datasets.dataloader)
+    key: str = 'transforms'
+    build_kwargs = cfg.build[model_name]
+    ds_name = build_kwargs.dataset
 
-    cls = dataset_registry[name]
-    transforms = build_transforms(cfg, cfg.build[model_name].get('transforms') or mode)
-    collate_fn = build_func(kwargs.pop('collate_fn', 'collate_fn'))
-    dataset = cls(**{**dict(attrs), 'transforms': transforms})
+    cls = dataset_registry[ds_name]
+    transforms = build_transforms(cfg, build_kwargs[mode].get(key) or build_kwargs.get(key) or mode)
+    dl_kwargs = dict(cfg.datasets.dataloader)
 
-    return DataLoader(dataset, collate_fn=collate_fn, **kwargs)
+    collate_fn = build_func(dl_kwargs.pop('collate_fn', 'collate_fn'))
+    attrs = cfg.datasets[ds_name].get(mode, None)
+    dataset = cls(**{**dict(attrs), key: transforms})
+
+    return DataLoader(dataset, collate_fn=collate_fn, **dl_kwargs)
 
 
 @configurable
