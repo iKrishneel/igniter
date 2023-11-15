@@ -77,12 +77,12 @@ def build_dataloader(model_name: str, cfg: DictConfig, mode: str) -> DataLoader:
     name = cfg.build[model_name].dataset
     attrs = cfg.datasets[name].get(mode, None)
     kwargs = dict(cfg.datasets.dataloader)
-    
+
     cls = dataset_registry[name]
     transforms = build_transforms(cfg, cfg.build[model_name].get('transforms') or mode)
     collate_fn = build_func(kwargs.pop('collate_fn', 'collate_fn'))
     dataset = cls(**{**dict(attrs), 'transforms': transforms})
-   
+
     return DataLoader(dataset, collate_fn=collate_fn, **kwargs)
 
 

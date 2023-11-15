@@ -35,25 +35,32 @@ def configure(func: Callable) -> Callable:
     @functools.wraps(func)
     def _wrapper(cfg: DictConfig, config_file: str, caller_path: str = '', **kwargs: Dict[str, Any]) -> Any:
         OmegaConf.set_struct(cfg, False)
-
-        default_cfg = OmegaConf.load(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'configs/config.yaml'))
-        cfg = OmegaConf.merge(default_cfg, cfg)
-
         if '_base_' in cfg:
             filename = os.path.join(hydra.utils.get_original_cwd(), os.path.dirname(config_file), cfg._base_)
             base_cfg = read_base_configs(filename)
             cfg = OmegaConf.merge(base_cfg, cfg)
-
+        else:
+            cfg = load_default(cfg)
         OmegaConf.set_struct(cfg, True)
         return func(cfg, caller_path, **kwargs)
 
     return _wrapper
 
 
+def load_default(cfg: DictConfig) -> DictConfig:
+    default_cfg = OmegaConf.load(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'configs/config.yaml'))
+    remove_keys = [key for key in default_cfg if not default_cfg[key]]
+    for key in remove_keys:
+        default_cfg.pop(key)
+    return OmegaConf.merge(default_cfg, cfg)
+
+
 def read_base_configs(filename: str) -> DictConfig:
     assert os.path.isfile(filename), f'File not found {filename}'
     cfg = OmegaConf.load(filename)
-    base_cfg = read_base_configs(os.path.join(os.path.dirname(filename), cfg._base_)) if '_base_' in cfg else {}
+    base_cfg = read_base_configs(
+        os.path.join(os.path.dirname(filename), cfg._base_)
+    ) if '_base_' in cfg else load_default({})
     cfg = OmegaConf.merge(base_cfg, cfg)
     return cfg
 
@@ -70,7 +77,7 @@ def initiate(config_file: str, caller_path: str = '') -> None:
     kwargs = dict(version_base=None, config_path=config_path, config_name=config_name)
     if hydra.__version__ < '1.2':
         kwargs.pop('version_base', None)
-        
+
     @hydra.main(**kwargs)
     def _initiate(cfg: DictConfig):
         run_flow(cfg, config_file, caller_path)
