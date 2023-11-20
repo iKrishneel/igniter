@@ -36,6 +36,10 @@ def configure(func: Callable) -> Callable:
     @functools.wraps(func)
     def _wrapper(cfg: DictConfig, config_file: str, caller_path: str = '', **kwargs: Dict[str, Any]) -> Any:
         cfg = _full_config(cfg, config_file)
+
+        config_dir = os.path.join(hydra.utils.get_original_cwd(), os.path.dirname(config_file))
+        cfg = _to_absolute_path(cfg, config_dir)
+
         return func(cfg, caller_path, **kwargs)
 
     return _wrapper
@@ -58,6 +62,20 @@ def _full_config(cfg: DictConfig, config_file: str, config_dir: str = None) -> D
     # cfg = load_values_from_file(config_dir, cfg)
 
     OmegaConf.set_struct(cfg, True)
+    return cfg
+
+
+def _to_absolute_path(cfg: DictConfig, config_dir: str) -> DictConfig:
+    if not isinstance(cfg, DictConfig):
+        return
+
+    for key in cfg:
+        if isinstance(cfg[key], str) and not os.path.isabs(cfg[key]):
+            path = os.path.normpath(os.path.join(config_dir, cfg[key]))
+            if os.path.isfile(path) or os.path.isdir(path):
+                cfg[key] = path
+        else:
+            _to_absolute_path(cfg[key], config_dir)
     return cfg
 
 
