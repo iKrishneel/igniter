@@ -5,7 +5,7 @@ import inspect
 import os
 import subprocess
 from copy import deepcopy
-from typing import Any, Callable, Dict, Tuple
+from typing import Any, Callable, Dict
 
 import hydra
 from omegaconf import DictConfig, OmegaConf, open_dict
@@ -48,9 +48,9 @@ def configure(func: Callable) -> Callable:
 def _full_config(cfg: DictConfig, config_file: str, config_dir: str = None) -> DictConfig:
     OmegaConf.set_struct(cfg, False)
 
-    config_dir = os.path.join(
-        hydra.utils.get_original_cwd(), os.path.dirname(config_file)
-    ) if config_dir is None else config_dir
+    config_dir = (
+        os.path.join(hydra.utils.get_original_cwd(), os.path.dirname(config_file)) if config_dir is None else config_dir
+    )
     if '_base_' in cfg:
         filename = os.path.join(config_dir, cfg._base_)
         base_cfg = read_base_configs(filename)
@@ -58,7 +58,7 @@ def _full_config(cfg: DictConfig, config_file: str, config_dir: str = None) -> D
     else:
         cfg = load_default(cfg)
 
-    # TODO: load _file_ attributes for keys            
+    # TODO: load _file_ attributes for keys
     # cfg = load_values_from_file(config_dir, cfg)
 
     OmegaConf.set_struct(cfg, True)
@@ -109,9 +109,9 @@ def load_default(cfg: DictConfig) -> DictConfig:
 def read_base_configs(filename: str) -> DictConfig:
     assert os.path.isfile(filename), f'File not found {filename}'
     cfg = OmegaConf.load(filename)
-    base_cfg = read_base_configs(
-        os.path.join(os.path.dirname(filename), cfg._base_)
-    ) if '_base_' in cfg else load_default({})
+    base_cfg = (
+        read_base_configs(os.path.join(os.path.dirname(filename), cfg._base_)) if '_base_' in cfg else load_default({})
+    )
     cfg = OmegaConf.merge(base_cfg, cfg)
     return cfg
 
@@ -123,6 +123,7 @@ def get_full_config(config_file: str, caller_path: str = '') -> DictConfig:
     with initialize_config_dir(version_base=None, config_dir=config_path, job_name='full_config'):
         cfg = compose(config_name=config_name)
         cfg = _full_config(cfg, config_file, config_dir=config_path)
+        cfg = _to_absolute_path(cfg, config_path)
     return cfg
 
 
