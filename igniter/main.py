@@ -5,7 +5,7 @@ import inspect
 import os
 import subprocess
 from copy import deepcopy
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, List
 
 import hydra
 from omegaconf import DictConfig, OmegaConf, open_dict
@@ -59,7 +59,7 @@ def _full_config(cfg: DictConfig, config_file: str, config_dir: str = None) -> D
         cfg = load_default(cfg)
 
     # TODO: load _file_ attributes for keys
-    # cfg = load_values_from_file(config_dir, cfg)
+    # cfg = _load_values_from_file(config_dir, cfg)
 
     OmegaConf.set_struct(cfg, True)
     return cfg
@@ -79,23 +79,33 @@ def _to_absolute_path(cfg: DictConfig, config_dir: str) -> DictConfig:
     return cfg
 
 
-def load_values_from_file(config_dir: str, cfg: DictConfig) -> DictConfig:
+def _load_values_from_file(config_dir: str, cfg: DictConfig) -> DictConfig:
     """
     Current implementation only supports top level keys to use this
     """
     assert os.path.isdir(config_dir), f'Invalid directory {config_dir}'
 
-    for key in cfg:
-        value = cfg[key]
+    def _iterate(_cfg: DictConfig, key_stack: List[str] = []) -> DictConfig:
+        value = _cfg
         if isinstance(value, str) and '.yaml' in value:
             filename = value if os.path.isabs(value) else os.path.join(config_dir, value)
             assert os.path.isfile(filename), f'{value} file not found at {filename}'
             conf = OmegaConf.load(filename)
-            cfg[key] = conf[key]
-        if isinstance(value, DictConfig):
-            load_values_from_file(config_dir, value)
 
-    return cfg
+            _tmp_cfg = cfg
+            for key in key_stack[:-1]:
+                _tmp_cfg, conf = _tmp_cfg[key], conf[key]
+            key = key_stack[-1]
+            setattr(_tmp_cfg, key, conf[key])
+
+        if isinstance(_cfg, DictConfig):
+            for key in _cfg:
+                key_stack.append(key)
+                _iterate(_cfg[key], key_stack)
+                key_stack.pop()
+        return cfg
+
+    return _iterate(cfg)
 
 
 def load_default(cfg: DictConfig) -> DictConfig:
