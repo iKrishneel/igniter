@@ -1,5 +1,6 @@
 driver: torch
 device: cpu
+dtype: float32
 
 workdir:
 

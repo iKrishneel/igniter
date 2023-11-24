@@ -94,8 +94,9 @@ def build_model(name: str, cfg: DictConfig) -> nn.Module:
     logger.info(f'Building network model {name}')
     cls_or_func = model_registry[name]
     attrs = cfg.models[name] or {}
-    return cls_or_func(**attrs)
-
+    dtype = getattr(torch, cfg.get('dtype', 'float32'))
+    return cls_or_func(**attrs).to(dtype)
+    
 
 @configurable
 def build_optim(model_name: str, cfg: DictConfig, model: nn.Module):

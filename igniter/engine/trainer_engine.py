@@ -174,4 +174,6 @@ class EvaluationEngine(Engine):
 
     def __call__(self):
         self._iter = 0
-        self.run(self._dataloader)
+        val_cfg = self._cfg.build[model_name(self._cfg)].val
+        epoch_length = train_cfg.get('iters_per_epoch', len(self._dataloader))
+        self.run(self._dataloader, getattr(val_cfg, epochs, 1), epoch_length=epoch_length)
