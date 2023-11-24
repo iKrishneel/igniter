@@ -7,6 +7,7 @@ import os
 from typing import Any, Callable, Dict, List, Optional, Union
 
 import ignite.distributed as idist
+import torch
 import torch.nn as nn
 from ignite.engine import Engine, Events
 from ignite.handlers import BasicTimeProfiler
