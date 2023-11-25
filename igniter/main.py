@@ -79,15 +79,14 @@ def _to_absolute_path(cfg: DictConfig, config_dir: str) -> DictConfig:
     return cfg
 
 
-def _load_values_from_file(config_dir: str, cfg: DictConfig) -> DictConfig:
-    """
-    Current implementation only supports top level keys to use this
-    """
+def _load_values_from_file(config_dir: str, cfg: DictConfig, delimiter: str = ':') -> DictConfig:
     assert os.path.isdir(config_dir), f'Invalid directory {config_dir}'
 
     def _iterate(_cfg: DictConfig, key_stack: List[str] = []) -> DictConfig:
         value = _cfg
         if isinstance(value, str) and '.yaml' in value:
+            value, value_key = value.split(delimiter) if delimiter in value else (value, None)
+            
             filename = value if os.path.isabs(value) else os.path.join(config_dir, value)
             assert os.path.isfile(filename), f'{value} file not found at {filename}'
             conf = OmegaConf.load(filename)
@@ -96,7 +95,7 @@ def _load_values_from_file(config_dir: str, cfg: DictConfig) -> DictConfig:
             for key in key_stack[:-1]:
                 _tmp_cfg, conf = _tmp_cfg[key], conf[key]
             key = key_stack[-1]
-            setattr(_tmp_cfg, key, conf[key])
+            setattr(_tmp_cfg, key, conf[value_key if value_key else key])
 
         if isinstance(_cfg, DictConfig):
             for key in _cfg:
