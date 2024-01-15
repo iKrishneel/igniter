@@ -156,7 +156,7 @@ def build_io(cfg: DictConfig) -> Union[Dict[str, Callable], None]:
     if not cfg.get('io'):
         return None
 
-    def _build(cfg):
+    def _build(cfg) -> Any:
         engine = cfg.engine
         cls = io_registry[engine]
         cls = importlib.import_module(engine) if cls is None else cls

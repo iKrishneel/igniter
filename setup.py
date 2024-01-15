@@ -47,6 +47,7 @@ setup(
     zip_safe=False,
     install_requires=install_requires,
     test_suite='tests',
+    package_data={__name__: [f'{__name__}/configs/config.yaml']},
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
