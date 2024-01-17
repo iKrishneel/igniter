@@ -97,7 +97,7 @@ def build_model(name: str, cfg: DictConfig) -> nn.Module:
     attrs = cfg.models[name] or {}
     dtype = getattr(torch, cfg.get('dtype', 'float32'))
     return cls_or_func(**attrs).to(dtype)
-    
+
 
 @configurable
 def build_optim(model_name: str, cfg: DictConfig, model: nn.Module):
@@ -156,14 +156,14 @@ def build_io(cfg: DictConfig) -> Union[Dict[str, Callable], None]:
     if not cfg.get('io'):
         return None
 
-    def _build(cfg) -> Any:
-        engine = cfg.engine
+    def _build(io_cfg) -> Any:
+        engine = io_cfg.engine
         cls = io_registry[engine]
         cls = importlib.import_module(engine) if cls is None else cls
         try:
-            return cls.build(cfg)
+            return cls.build(io_cfg, cfg)
         except AttributeError:
-            return cls(cfg)
+            return cls(io_cfg, cfg)
 
     return {key: _build(cfg.io[key]) for key in cfg.io}
 

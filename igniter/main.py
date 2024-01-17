@@ -86,7 +86,7 @@ def _load_values_from_file(config_dir: str, cfg: DictConfig, delimiter: str = ':
         value = _cfg
         if isinstance(value, str) and '.yaml' in value:
             value, value_key = value.split(delimiter) if delimiter in value else (value, None)
-            
+
             filename = value if os.path.isabs(value) else os.path.join(config_dir, value)
             assert os.path.isfile(filename), f'{value} file not found at {filename}'
             conf = OmegaConf.load(filename)

@@ -7,6 +7,7 @@ from io import BytesIO
 from typing import Any, Dict, Union
 
 import torch
+from omegaconf import DictConfig
 
 from ..registry import io_registry
 from .s3_client import S3Client
@@ -16,6 +17,7 @@ from .s3_client import S3Client
 class S3IO(S3Client):
     def __init__(self, bucket_name, root, **kwargs):
         assert len(root) > 0, 'Invalid root'
+        self.cfg = kwargs.pop('cfg', None)
         super(S3IO, self).__init__(bucket_name, **kwargs)
         root = osp.normpath(root)
         self.root = root[1:] if root[0] == '/' else root
@@ -24,8 +26,8 @@ class S3IO(S3Client):
         self.extension = '.' + extension if '.' not in extension else extension
 
     @classmethod
-    def build(cls, io_cfg):
-        return cls(bucket_name=io_cfg.bucket_name, root=io_cfg.root)
+    def build(cls, io_cfg: DictConfig, cfg: DictConfig):
+        return cls(bucket_name=io_cfg.bucket_name, root=io_cfg.root, cfg=cfg)
 
     def __call__(self, data: Any, filename: str):  # type: ignore
         assert len(filename) > 0, 'Invalid filename'
@@ -53,8 +55,8 @@ class FileIO(object):
         assert len(self.root) > 0, f'Directory {self.root} is not valid!'
 
     @classmethod
-    def build(cls, io_cfg):
-        return cls(root=io_cfg.root)
+    def build(cls, io_cfg: DictConfig, cfg: DictConfig):
+        return cls(root=io_cfg.root, cfg=cfg)
 
     def __call__(self, data: Any, filename: str):
         assert len(filename) > 0, 'Invalid filename'
