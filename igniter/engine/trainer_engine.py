@@ -124,13 +124,25 @@ class TrainerEngine(Engine):
         return lr[0] if isinstance(lr, list) else lr
 
     def get_state_dict(self) -> Dict[str, Any]:
-        return {
+        state_dict = {
             'model': self._model.state_dict(),
+            'cfg': self._cfg,
             'optimizer': self._optimizer.state_dict(),
             'scheduler': self._scheduler.state_dict(),
             'state': self.state,
-            'cfg': self._cfg,
         }
+
+        save_options = self._cfg.io.checkpoint.get('save', 'all')
+        if save_options == 'all':
+            return state_dict
+
+        for key in ['optimizer', 'scheduler', 'state']:
+            if key in save_options:
+                continue
+            state_dict.pop(key)
+
+        return state_dict
+
 
     @staticmethod
     def add_persistent_logger(engine, **kwargs) -> None:

@@ -50,6 +50,7 @@ class S3IO(S3Client):
 class FileIO(object):
     root: str
     extension: str = '.pt'
+    cfg: DictConfig = None
 
     def __post_init__(self):
         assert len(self.root) > 0, f'Directory {self.root} is not valid!'

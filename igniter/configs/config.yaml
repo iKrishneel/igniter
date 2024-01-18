@@ -26,6 +26,10 @@ models:
 solvers:
 
 io:
+  checkpoint:
+    engine: 'file_writer'
+    root: "./weights/"
+    save: "all"  # or state, scheduler, optimizer
 
 build:
 
