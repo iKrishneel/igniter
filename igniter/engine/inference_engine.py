@@ -26,9 +26,9 @@ class InferenceEngine(object):
     def __init__(
         self,
         config_file: Optional[Union[str, DictConfig]] = None,
-        model: torch.nn.Module = None,            
+        model: torch.nn.Module = None,
         log_dir: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         assert log_dir or config_file, 'Must provide either the log_dir or the config file'
 
