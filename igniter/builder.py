@@ -26,7 +26,7 @@ from igniter.registry import (
 )
 from igniter.utils import is_distributed, loggable_model_info, model_name
 
-MODES: List[str] = ['train', 'val', 'test']
+MODES: List[str] = ['train', 'val', 'test', 'inference']
 
 
 def build_func(func_name: str = 'default'):
@@ -251,8 +251,6 @@ def build_engine(model_name, cfg: DictConfig) -> Callable:
     logger.info(f'\n{model}')
     logger.info('\n' + loggable_model_info(model))
 
-    # importlib.import_module('igniter.engine.utils').load_weights(model, cfg)
-
     # TODO: Remove hardcoded name and replace with registry based
     logger.warning('# TODO: Remove hardcoded name and replace with registry based')
 
@@ -261,7 +259,6 @@ def build_engine(model_name, cfg: DictConfig) -> Callable:
     if mode in ['train', 'val']:
         io_ops = build_io(cfg)
 
-        # if mode == 'train':
         if options.train:
             dataloader = build_dataloader(cfg, mode)
             optimizer = build_optim(cfg, model)
@@ -275,7 +272,6 @@ def build_engine(model_name, cfg: DictConfig) -> Callable:
 
             if options.eval:
                 build_validation(cfg, engine)
-            # elif mode == 'val' and options.eval:
         elif options.eval:
             attrs = cfg.build[model_name].get('val', None)
             assert attrs, 'Validation attributes are required when options.eval=True'
@@ -298,7 +294,10 @@ def build_engine(model_name, cfg: DictConfig) -> Callable:
         attrs = cfg.build[model_name].get(key, None)
         engine_name = attrs.get('engine', 'default_inference') if attrs else 'default_inference'
         logger.info(f'>>> Inference engine: {engine_name}')
-        engine = engine_registry[engine_name](cfg)
+
+        build_kwargs, key = cfg.build[model_name], 'transforms'
+        transforms = build_transforms(cfg, build_kwargs[mode].get(key) or build_kwargs.get(key) or mode)
+        engine = engine_registry[engine_name](cfg, model, transforms=transforms)
     else:
         raise TypeError(f'Unknown mode {mode}')
 

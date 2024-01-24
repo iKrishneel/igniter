@@ -24,7 +24,11 @@ __all__ = [
 @engine_registry('default_inference')
 class InferenceEngine(object):
     def __init__(
-        self, config_file: Optional[Union[str, DictConfig]] = None, log_dir: Optional[str] = None, **kwargs
+        self,
+        config_file: Optional[Union[str, DictConfig]] = None,
+        model: torch.nn.Module = None,            
+        log_dir: Optional[str] = None,
+        **kwargs
     ) -> None:
         assert log_dir or config_file, 'Must provide either the log_dir or the config file'
 
@@ -62,11 +66,11 @@ class InferenceEngine(object):
         self.device = cfg.get('device', 'cuda' if torch.cuda.is_available() else 'cpu')
         logger.info(f'Using device: {self.device}')
 
-        model = build_model(cfg)
+        model = build_model(cfg) if model is None else model
         load_weights(model, cfg, strict=kwargs.get('strict', True))
         model.to(self.device)
         model.eval()
-        self.model = model
+        self._model = model
 
         logger.info('Inference Engine is Ready!')
 
@@ -82,3 +86,7 @@ class InferenceEngine(object):
 
         image = image[None, :] if len(image.shape) == 3 else image  # type: ignore
         return self.model(image.to(self.device), **kwargs)  # type: ignore
+
+    @property
+    def model(self) -> torch.nn.Module:
+        return self._model
