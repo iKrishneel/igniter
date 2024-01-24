@@ -143,7 +143,6 @@ class TrainerEngine(Engine):
 
         return state_dict
 
-
     @staticmethod
     def add_persistent_logger(engine, **kwargs) -> None:
         ProgressBar(persist=False).attach(engine, metric_names='all', output_transform=None)
