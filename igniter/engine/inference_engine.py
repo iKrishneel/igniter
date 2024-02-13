@@ -74,7 +74,7 @@ class InferenceEngine(object):
 
         logger.info('Inference Engine is Ready!')
 
-    @torch.no_grad()
+    @torch.inference_mode()
     def __call__(self, image: Union[np.ndarray, Image.Image, torch.Tensor], **kwargs: Dict[str, Any]):
         assert image is not None, 'Input image is required'
 
