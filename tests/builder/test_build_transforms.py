@@ -44,15 +44,17 @@ def test_build_transforms_both(cfg):
 
 
 def test_build_transforms_all(cfg):
-    transform_dict = build_transforms(cfg)
-    assert isinstance(transform_dict, dict)
+    transform = build_transforms(cfg)
+    assert transform is None
 
-    for key in ['train', 'val', 'test']:
-        assert key in transform_dict
-        assert isinstance(transform_dict[key], TF.Compose)
+    for key, size in zip(['train', 'val', 'test'], [3, 2, 5]):
+        transform = build_transforms(cfg, name=key)
+
+        assert isinstance(transform, TF.Compose)
+        assert len(transform.transforms) == size
 
 
 def test_build_transforms_wrong_mode(cfg):
     with pytest.raises(AssertionError):
-        transform_dict = build_transforms(cfg, 'Train2') or {}
-        assert isinstance(transform_dict, dict)
+        transform = build_transforms(cfg, 'Train2') or {}
+        assert isinstance(transform, dict)
