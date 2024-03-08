@@ -21,12 +21,14 @@ def guard(func: Callable) -> Callable:
         caller_frame = getattr(inspect.currentframe(), 'f_back', None)
         assert caller_frame is not None
         caller_module = getattr(inspect.getmodule(caller_frame), '__name__', None)
-        assert caller_module is not None
+        # assert caller_module is not None
+        if caller_module is None:
+            return
         caller_filename = getattr(inspect.getframeinfo(caller_frame), 'filename', None)
         assert caller_filename is not None
         absolute_path = os.path.abspath(caller_filename)
 
-        if caller_module == '__main__':
+        if caller_module in ['__main__', 'igniter.cli']:
             func(config_file, absolute_path)
 
     return _wrapper

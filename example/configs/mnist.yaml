@@ -1,3 +1,4 @@
+driver: "../mnist.py"
 device: "cuda"
 
 workdir:
