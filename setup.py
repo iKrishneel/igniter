@@ -44,9 +44,10 @@ setup(
     version=f'{__version__}',  # NOQA: F821
     long_description=readme,
     packages=find_packages(),
-    zip_safe=False,
+    zip_safe=True,
     install_requires=install_requires,
     test_suite='tests',
+    include_package_data=True,
     package_data={__name__: [f'{__name__}/configs/config.yaml']},
     classifiers=[
         'Development Status :: 4 - Beta',
@@ -56,6 +57,7 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',        
     ],
     entry_points={
         'console_scripts': {

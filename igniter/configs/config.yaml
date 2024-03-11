@@ -1,4 +1,4 @@
-driver: torch
+driver:
 device: cpu
 dtype: float32
 
