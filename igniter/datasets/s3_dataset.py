@@ -55,16 +55,16 @@ class S3CocoDataset(S3Dataset):
             warnings.warn('Target transforms is not yet implemented')
 
     def __getitem__(self, index: int) -> Tuple[Any, ...]:
-        iid = self.ids[index]
         while True:
             try:
+                iid = self.ids[index]
                 image, target = self._load(iid)
                 if self.transforms and self.apply_transforms:
                     image = self.transforms(image)
                 return image, target
             except Exception as e:
                 logger.warning(f'{e} for iid: {iid}')
-                iid = np.random.choice(iid)
+                index = np.random.choice(np.arange(len(self.ids)))
 
     def _load(self, iid: int) -> Tuple[Any, ...]:
         file_name = osp.join(self.root, self.coco.loadImgs(iid)[0]['file_name'])

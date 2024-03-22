@@ -68,7 +68,7 @@ def main() -> None:
         load_script(cfg.driver)
     else:
         logger.info(f'Importing: {cfg.driver}')
-        import_module(cfg.driver)
+        import_modules(cfg.driver)
 
     _run(cfg)
 
