@@ -69,6 +69,7 @@ class InferenceEngine(object):
         model = build_model(cfg) if model is None else model
         load_weights(model, cfg, strict=kwargs.get('strict', True))
         model.to(self.device)
+        model.to(getattr(torch, cfg.dtype))
         model.eval()
         self._model = model
 

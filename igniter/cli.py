@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 
-from typing import List, Dict
 import argparse
-import os
 import importlib
 import logging
+import os
+from typing import List
+
 from igniter.logger import logger
-from igniter.main import get_full_config, _run
+from igniter.main import _run, get_full_config
 
 
 def _find_files(directory: str, ext: str = 'py') -> List[str]:
@@ -54,7 +55,7 @@ def main() -> None:
     args = parser.parse_args()
 
     logger.setLevel(getattr(logging, args.log_level))
-    
+
     config_path = os.path.abspath(args.config)
     assert config_path.split('.')[1] == 'yaml', f'Config must be a yaml file but got {config_path}'
     logger.info(f'Using config {config_path}')

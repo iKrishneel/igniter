@@ -67,8 +67,8 @@ def load_weights(model: nn.Module, cfg: DictConfig, **kwargs):
     for key in state_dict:
         if key not in wpth or state_dict[key].shape == wpth[key].shape:
             continue
-        logger.info(f'Removing shape missmatch key {key}')
-        wpth.pop(key)
+        logger.warning(f'Shape missmatch key {key} {state_dict[key].shape} != {wpth[key].shape}')
+        # wpth.pop(key)
 
     load_status = model.load_state_dict(wpth, strict=kwargs.get('strict', False))
     logger.info(f'{load_status}')
