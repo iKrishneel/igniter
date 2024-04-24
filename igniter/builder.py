@@ -69,7 +69,13 @@ def build_transforms(cfg: DictConfig, name: Optional[str] = None) -> Union[List[
                 kwargs = kwargs or {}
                 transform = transform(**kwargs)
             transform_list.append(transform)
-        transforms[key] = module.Compose(transform_list)
+
+        try:
+            compose = module.v2.Compose
+        except AttributeError:
+            compose = module.Compose
+        compose = transform_registry.get('Compose') or compose
+        transforms[key] = compose(transform_list)
 
     return transforms[name] if name else transforms
 
@@ -319,7 +325,10 @@ def get_options(cfg: DictConfig) -> DictConfig:
 
 def _trainer(rank: Union[int, None], cfg: DictConfig) -> None:
     trainer = build_engine(cfg)
-    trainer()
+    if trainer:
+        trainer()
+    else:
+        logger.warning('Engine not available, Terminating execution!!')
 
 
 def trainer(cfg: DictConfig) -> None:
