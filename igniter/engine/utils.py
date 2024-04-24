@@ -26,6 +26,10 @@ def _remap_keys(weight_dict) -> OrderedDict:
 
 def get_weights(cfg: DictConfig, **kwargs: Dict[str, Any]) -> Union[Dict[str, Any], None]:
     weight_path = cfg.build[model_name(cfg)].get('weights', None) if isinstance(cfg, DictConfig) else cfg
+    return get_weights_util(weight_path, **kwargs)
+
+
+def get_weights_util(weight_path: str, **kwargs: Dict[str, Any]):
     if not weight_path or len(weight_path) == 0:
         logger.warning('Weight is empty!'.upper())
         return None
@@ -62,7 +66,7 @@ def load_weights(model: nn.Module, cfg: DictConfig, **kwargs):
         return
 
     state_dict = model.state_dict()
-    wpth = _remap_keys(weight_dict['model'])
+    wpth = _remap_keys(weight_dict['model'] if not isinstance(weight_dict, OrderedDict) else weight_dict)
 
     for key in state_dict:
         if key not in wpth or state_dict[key].shape == wpth[key].shape:
@@ -91,7 +95,7 @@ def load_weights_from_s3(path: str, decoder: Union[Callable[..., Any], str, None
     logger.info(f'Loading weights from {path}')
     if decoder:
         weights = s3_client(path, decoder=decoder)
-        torch.save(weights, root)
+        save_weights(weights, root)
     else:
         s3_client.download(path, root)
         weights = load_weights_from_file(root)  # type: ignore
@@ -104,3 +108,7 @@ def load_weights_from_s3(path: str, decoder: Union[Callable[..., Any], str, None
 def load_weights_from_file(path: str) -> Dict[str, torch.Tensor]:
     assert osp.isfile(path), f'Not weight found {path}'
     return torch.load(path, map_location='cpu')
+
+
+def save_weights(weights: Dict[str, Any], root: str) -> None:
+    torch.save(weights, root)
