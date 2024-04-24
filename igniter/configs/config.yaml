@@ -3,6 +3,8 @@ device: cpu
 dtype: float32
 
 workdir:
+  path: ./igniter_logs/
+  unqiue: False
 
 distributed:
   backend: nccl
@@ -30,6 +32,9 @@ io:
     engine: 'file_writer'
     root: "./weights/"
     save: "all"  # or state, scheduler, optimizer
+
+  log_handler:
+    engine: 'tqdm'
 
 build:
 

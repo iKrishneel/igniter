@@ -80,7 +80,7 @@ def build_transforms(cfg: DictConfig, name: Optional[str] = None) -> Union[List[
     return transforms[name] if name else transforms
 
 
-@torch.compile
+@torch.compile()
 @configurable
 def build_dataloader(model_name: str, cfg: DictConfig, mode: str) -> DataLoader:
     logger.info(f'Building {mode} dataloader')
@@ -174,8 +174,11 @@ def build_io(cfg: DictConfig) -> Union[Dict[str, Callable], None]:
             return cls.build(io_cfg, cfg)
         except AttributeError:
             return cls(io_cfg, cfg)
-
     return {key: _build(cfg.io[key]) for key in cfg.io}
+
+
+def build_logger(cfg: DictConfig):
+    pass
 
 
 @configurable

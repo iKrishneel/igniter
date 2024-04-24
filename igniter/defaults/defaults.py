@@ -16,6 +16,7 @@ def default_forward(engine, batch) -> None:
     engine._model.train()
     inputs, targets = batch
     losses = engine._model(inputs, targets)
+    n_size = len(losses)
 
     if isinstance(losses, dict):
         loss_sum = sum(losses.values())
@@ -33,6 +34,8 @@ def default_forward(engine, batch) -> None:
         free, total = torch.cuda.mem_get_info()
         losses['gpu_mem'] = convert_bytes_to_human_readable(total - free)
 
+    if n_size == 1:
+        losses.pop('total_loss')
     engine.state.metrics = losses
 
 

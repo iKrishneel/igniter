@@ -12,7 +12,8 @@ from typing import List, Type
 from omegaconf import DictConfig, open_dict
 
 from igniter.logger import logger
-from igniter.main import _run, get_full_config
+from igniter.main import _run as igniter_run
+from igniter.main import get_full_config
 
 Namespace = Type[argparse.Namespace]
 
@@ -62,7 +63,7 @@ def get_config(args: Namespace) -> DictConfig:
     return get_full_config(config_path)
 
 
-def load(cfg: DictConfig) -> None:
+def load_modules(cfg: DictConfig) -> None:
     if osp.isdir(cfg.driver):
         raise NotImplementedError
     elif _is_path(cfg.driver):
@@ -75,8 +76,12 @@ def load(cfg: DictConfig) -> None:
 
 def train(args: Namespace) -> None:
     cfg = get_config(args)
-    load(cfg)
-    _run(cfg)
+
+    with open_dict(cfg):
+        cfg.build.mode = 'train'
+
+    load_modules(cfg)
+    igniter_run(cfg)
 
 
 def export(args: Namespace):

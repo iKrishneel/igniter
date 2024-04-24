@@ -52,6 +52,11 @@ io:
     engine: 'file_writer'
     root: "/root/krishneel/Downloads/mnist/models/mnist/"
 
+  log_handler:
+    engine: 'fair'
+    attach:
+      every: 10
+
 build:
   mnist:
     dataset: "mnist"

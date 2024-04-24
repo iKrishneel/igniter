@@ -27,4 +27,5 @@ console_handler.setFormatter(formatter)
 # file_handler.setFormatter(logging.Formatter(format_style))
 
 logger.addHandler(console_handler)
+logger.setLevel(level)
 # logger.addHandler(file_handler)
