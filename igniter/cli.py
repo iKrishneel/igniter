@@ -74,11 +74,13 @@ def load_modules(cfg: DictConfig) -> None:
         import_modules(cfg.driver)
 
 
-def train(args: Namespace) -> None:
+def train_val_run(args: Namespace, is_train: bool) -> None:
     cfg = get_config(args)
 
     with open_dict(cfg):
-        cfg.build.mode = 'train'
+        cfg.build.mode = 'train' if is_train else 'val'
+        cfg.options.train = is_train
+        cfg.options.eval = not is_train
 
     load_modules(cfg)
     igniter_run(cfg)
@@ -121,7 +123,10 @@ def main() -> None:
 
     train_parser = sub_parsers.add_parser('train', help='Description for training args')
     train_parser.add_argument('config', type=str, help='Configuration filename')
-    # train_parser.add_argument('--log-level', type=str, default='INFO')
+
+    eval_parser = sub_parsers.add_parser('eval', help='Description for evaluation args')
+    eval_parser.add_argument('config', type=str, help='Configuration filename')
+    eval_parser.add_argument('--weights', type=str, required=False, help='Path to weight file')
 
     export_parser = sub_parsers.add_parser('export', help='Exports the train model for inference')
     # train_parser.add_argument('config', type=str, help='Configuration filename')
@@ -138,11 +143,10 @@ def main() -> None:
         print('\033[0m')
         sys.exit()
 
-    lut = {
-        'train': train,
-        'export': export,
-    }
-    lut[args.options](args)
+    if args.options in ['train', 'eval']:
+        train_val_run(args, args.options == 'train')
+    elif args.options == 'export':
+        export(args)
 
 
 if __name__ == '__main__':
