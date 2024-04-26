@@ -80,7 +80,6 @@ def build_transforms(cfg: DictConfig, name: Optional[str] = None) -> Union[List[
     return transforms[name] if name else transforms
 
 
-@torch.compile()
 @configurable
 def build_dataloader(model_name: str, cfg: DictConfig, mode: str) -> DataLoader:
     logger.info(f'Building {mode} dataloader')
@@ -100,6 +99,7 @@ def build_dataloader(model_name: str, cfg: DictConfig, mode: str) -> DataLoader:
     return DataLoader(dataset, collate_fn=collate_fn, **dl_kwargs)
 
 
+@torch.compile
 @configurable
 def build_model(name: str, cfg: DictConfig) -> nn.Module:
     logger.info(f'Building network model {name}')

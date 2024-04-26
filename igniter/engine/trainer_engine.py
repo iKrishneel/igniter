@@ -8,7 +8,7 @@ from typing import Any, Callable, Dict, Optional, Union
 import ignite.distributed as idist
 import torch
 import torch.nn as nn
-from ignite.engine import Engine, Events
+from ignite.engine import Engine as _Engine, Events
 from ignite.handlers import Checkpoint
 from omegaconf import DictConfig, OmegaConf
 from torch.utils.data import DataLoader
@@ -28,6 +28,13 @@ __all__ = ['TrainerEngine', 'EvaluationEngine']
 
 def get_datetime(fmt: str = '%Y-%m-%dT%H-%M-%S') -> str:
     return str(datetime.now().strftime(fmt))
+
+
+class Engine(_Engine):
+    def add_persistent_logger(self) -> None:
+        if hasattr(self, 'log_handler'):
+            kwargs = getattr(self.log_handler, '_attach_kwargs', {})
+            self.log_handler.attach(self, **kwargs)
 
 
 @engine_registry('default_trainer')
@@ -159,10 +166,6 @@ class TrainerEngine(Engine):
 
         return state_dict
 
-    def add_persistent_logger(self) -> None:
-        kwargs = getattr(self.log_handler, '_attach_kwargs', {})
-        self.log_handler.attach(self, **kwargs)
-
 
 @engine_registry('default_evaluation')
 class EvaluationEngine(Engine):
@@ -197,8 +200,7 @@ class EvaluationEngine(Engine):
             self.__dict__.update(io_ops)
 
         self._iter = 0
-        # self.add_persistent_logger()
-        ProgressBar(persist=False).attach(self, metric_names='all', output_transform=None)
+        self.add_persistent_logger()
 
     def __call__(self):
         self._iter = 0
