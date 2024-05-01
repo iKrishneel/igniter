@@ -99,14 +99,14 @@ def build_dataloader(model_name: str, cfg: DictConfig, mode: str) -> DataLoader:
     return DataLoader(dataset, collate_fn=collate_fn, **dl_kwargs)
 
 
-@torch.compile
 @configurable
 def build_model(name: str, cfg: DictConfig) -> nn.Module:
     logger.info(f'Building network model {name}')
     cls_or_func = model_registry[name]
     attrs = cfg.models[name] or {}
     dtype = getattr(torch, cfg.get('dtype', 'float32'))
-    return cls_or_func(**attrs).to(dtype)
+    model = cls_or_func(**attrs).to(dtype)
+    return torch.compile(model) if hasattr(torch, 'compile') else model
 
 
 @configurable

@@ -14,7 +14,8 @@ def tqdm_logger(io_cfg: DictConfig, cfg: DictConfig) -> Any:
 
     attrs = dict(io_cfg)
     attrs.pop('engine')
-    attach = attrs.pop('attach')
+
+    attach = attrs.pop('attach') if hasattr(attrs, 'attach') else {}
     attach['metric_names'] = attach.get('metric_names', 'all')
 
     p_logger = ProgressBar(**attrs)
@@ -28,7 +29,7 @@ def fair_logger(io_cfg: DictConfig, cfg: DictConfig) -> Any:
 
     attrs = dict(io_cfg)
     attrs.pop('engine')
-    attach = dict(attrs.pop('attach'))
+    attach = dict(attrs.pop('attach')) if hasattr(attrs, 'attach') else {}
     attach['name'] = cfg.build.model
 
     fb_logger = FBResearchLogger(logger=logger, **attrs)

@@ -8,7 +8,8 @@ from typing import Any, Callable, Dict, Optional, Union
 import ignite.distributed as idist
 import torch
 import torch.nn as nn
-from ignite.engine import Engine as _Engine, Events
+from ignite.engine import Engine as _Engine
+from ignite.engine import Events
 from ignite.handlers import Checkpoint
 from omegaconf import DictConfig, OmegaConf
 from torch.utils.data import DataLoader
