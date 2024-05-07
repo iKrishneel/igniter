@@ -11,6 +11,7 @@ from typing import List, Type
 
 from omegaconf import DictConfig, open_dict
 
+from igniter.builder import build_engine
 from igniter.logger import logger
 from igniter.main import _run as igniter_run
 from igniter.main import get_full_config
@@ -64,6 +65,8 @@ def get_config(args: Namespace) -> DictConfig:
 
 
 def load_modules(cfg: DictConfig) -> None:
+    if not hasattr(cfg, 'driver'):
+        return
     if osp.isdir(cfg.driver):
         raise NotImplementedError
     elif _is_path(cfg.driver):
@@ -86,7 +89,25 @@ def train_val_run(args: Namespace, is_train: bool) -> None:
     igniter_run(cfg)
 
 
-def export(args: Namespace):
+def test_run(args: Namespace) -> None:
+    from igniter.registry import func_registry
+
+    from .defaults.image_io import Inference
+
+    cfg = get_config(args)
+    with open_dict(cfg):
+        cfg.build.mode = 'inference'        
+        if args.weights:
+            cfg.build[cfg.build.model].weights = args.weights
+
+    load_modules(cfg)
+    engine = build_engine(cfg)
+    visualizer = func_registry[args.visualizer] if args.visualizer else None
+    inference = Inference(args.input, engine, visualizer, input_fmt=args.format, save=args.save, save_dir=args.save_dir)
+    inference.run()
+
+
+def export(args: Namespace) -> None:
     weights, output = args.weights, args.output
     utils = importlib.import_module('igniter.engine.utils')
     state_dict = utils.get_weights_util(weights)
@@ -128,6 +149,16 @@ def main() -> None:
     eval_parser.add_argument('config', type=str, help='Configuration filename')
     eval_parser.add_argument('--weights', type=str, required=False, help='Path to weight file')
 
+    test_parser = sub_parsers.add_parser('test', help='Description for test args')
+    test_parser.add_argument('config', type=str, help='Configuration filename')
+    test_parser.add_argument('input', type=str, help='Path to the input file')
+    test_parser.add_argument('--weights', type=str, required=False)    
+    test_parser.add_argument('--visualizer', type=str, required=False)
+    test_parser.add_argument('--format', type=str, default='RGB')
+    test_parser.add_argument('--save', type=str, required=False)
+    test_parser.add_argument('--save_dir', type=str, required=False, default='output/')
+    test_parser.add_argument('--thresh', type=float, default=0.1)
+
     export_parser = sub_parsers.add_parser('export', help='Exports the train model for inference')
     # train_parser.add_argument('config', type=str, help='Configuration filename')
     export_parser.add_argument('weights', type=str, help='Path to the trained model file with extension .pt/.pth')
@@ -147,6 +178,8 @@ def main() -> None:
         train_val_run(args, args.options == 'train')
     elif args.options == 'export':
         export(args)
+    elif args.options == 'test':
+        test_run(args)
 
 
 if __name__ == '__main__':

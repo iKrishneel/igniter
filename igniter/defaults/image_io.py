@@ -1,0 +1,104 @@
+#!/usr/bin/env python
+
+import os
+import os.path as osp
+import time
+from dataclasses import dataclass, field
+from typing import Any, Callable, List, Optional, Union
+
+import cv2 as cv
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
+from PIL import Image
+from torchvision.io import read_image, read_video
+
+from igniter.engine import InferenceEngine
+from igniter.logger import logger
+
+IMAGE_EXTS: List[str] = ['.jpg', '.png', '.jpeg']
+VIDEO_EXTS: List[str] = ['.avi', '.mp4']
+INPUT_FMTS: List[str] = ['RGB', 'BGR', 'GRAY', 'MONO']
+
+
+@dataclass
+class Inference(object):
+    filename: str
+    engine: InferenceEngine
+    visualizer: Optional[Callable] = None
+    threshold: Optional[float] = 0.0
+    input_fmt: Optional[str] = 'RGB'
+    save: Optional[bool] = False
+    save_dir: Optional[str] = None
+    _pre_hooks: List[Callable] = field(default_factory=lambda: [])
+    _post_hooks: List[Callable] = field(default_factory=lambda: [])
+
+    def __post_init__(self) -> None:
+        assert osp.isfile(self.filename), f'Invalid path: {self.filename}!'
+
+        supported_exts, ext = IMAGE_EXTS + VIDEO_EXTS, osp.splitext(self.filename)[1]
+        assert ext in supported_exts, f'Invalid file {self.filename}. Supported file types are {supported_exts}'
+        assert self.input_fmt.upper() in ['RGB', 'BGR', 'GRAY', 'MONO'], f'Invalid input format {self.input_fmt}'
+        if self.visualizer:
+            assert callable(self.visualizer)
+
+        if self.save:
+            assert osp.isdir(self.save_dir), f'{self.save_dir} is not a directory'
+            os.makedirs(self.save_dir, exist_ok=True)
+
+        assert self.engine is not None
+        self._ext = ext
+        self._loader = self.load_image if ext in IMAGE_EXTS else self.load_video
+
+    def __call__(self) -> None:
+        self._loader()
+
+    def run(self) -> None:
+        self()
+
+    def load_image(self) -> None:
+        image = Image.open(self.filename)
+        self.process(image)
+
+    def load_video(self) -> None:
+        logger.info(f'Loading video from: {self.filename}')
+        start_time = time.time()        
+        cap = cv.VideoCapture(self.filename)
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
+            self.process(frame)        
+        cap.release()
+        logger.info(f'Total Processing time: {time.time() - start_time}')        
+        logger.info('Completed!')
+
+    def process(self, image: Union[Image.Image, np.ndarray]) -> Any:
+        image = np.asarray(image) if not isinstance(image, np.ndarray) else image
+        start_time = time.time()
+        pred = self._process(image)
+        logger.info(f'Inference time: {time.time() - start_time}')
+        if self.visualizer:
+            self.visualizer(image, pred)
+        return pred
+        
+    @torch.inference_mode()
+    def _process(self, image: Image) -> Any:
+        image = self._run_hooks(image, self._pre_hooks)
+        pred = self.engine(image)
+        pred = self._run_hooks(pred, self._post_hooks)
+        return pred
+        
+    def register_forward_pre_hook(self, func: Callable) -> None:
+        assert callable(func)
+        self._pre_hooks.append(func)
+
+    def register_forward_post_hook(self, func: Callable) -> None:
+        assert callable(func)
+        sel._post_hooks.append(func)
+
+    @staticmethod
+    def _run_hooks(data: Any, hooks) -> Any:
+        for hook in hooks:
+            data = hook(data)
+        return data

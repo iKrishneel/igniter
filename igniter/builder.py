@@ -105,8 +105,7 @@ def build_model(name: str, cfg: DictConfig) -> nn.Module:
     cls_or_func = model_registry[name]
     attrs = cfg.models[name] or {}
     dtype = getattr(torch, cfg.get('dtype', 'float32'))
-    model = cls_or_func(**attrs).to(dtype)
-    return torch.compile(model) if hasattr(torch, 'compile') else model
+    return cls_or_func(**attrs).to(dtype)
 
 
 @configurable

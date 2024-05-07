@@ -71,6 +71,7 @@ class InferenceEngine(object):
         model.to(self.device)
         model.to(getattr(torch, cfg.dtype))
         model.eval()
+        # self._model = torch.compile(model) if hasattr(torch, 'compile') else model
         self._model = model
 
         logger.info('Inference Engine is Ready!')
