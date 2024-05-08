@@ -7,7 +7,7 @@ import os
 import os.path as osp
 import sys
 from collections import OrderedDict
-from typing import Any, Callable, List, Type
+from typing import Any, Callable, Dict, List, Type
 
 from omegaconf import DictConfig, open_dict
 
@@ -92,14 +92,11 @@ def train_val_run(args: Namespace, is_train: bool) -> None:
 def test_run(args: Namespace) -> None:
     from igniter.defaults.inference_runner import Inference, build_hook
 
-    def setup_hooks(hooks: Any, set_func: Callable) -> None:
+    def setup_hooks(hooks: Dict[str, Any], set_func: Callable) -> None:
         assert callable(set_func)
-        hooks = hooks or []
-        for i, hook in enumerate(list(hooks)):
-            name, kwargs = hook, {}
-            if not isinstance(hook, str):
-                name = next(iter(hook))
-                kwargs = dict(hook[name])
+        hooks = hooks or {}
+        for name, kwargs in dict(hooks).items():
+            kwargs = kwargs or {}
             hook = build_hook(name, **kwargs)
             set_func(hook)
 
