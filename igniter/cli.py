@@ -7,7 +7,7 @@ import os
 import os.path as osp
 import sys
 from collections import OrderedDict
-from typing import List, Type
+from typing import Any, Callable, List, Type
 
 from omegaconf import DictConfig, open_dict
 
@@ -90,20 +90,36 @@ def train_val_run(args: Namespace, is_train: bool) -> None:
 
 
 def test_run(args: Namespace) -> None:
-    from igniter.registry import func_registry
+    from igniter.defaults.inference_runner import Inference, build_hook
 
-    from .defaults.image_io import Inference
+    def setup_hooks(hooks: Any, set_func: Callable) -> None:
+        assert callable(set_func)
+        hooks = hooks or []
+        for i, hook in enumerate(list(hooks)):
+            name, kwargs = hook, {}
+            if not isinstance(hook, str):
+                name = next(iter(hook))
+                kwargs = dict(hook[name])
+            hook = build_hook(name, **kwargs)
+            set_func(hook)
 
     cfg = get_config(args)
+    model_name = cfg.build.model
+    assert model_name
+
     with open_dict(cfg):
-        cfg.build.mode = 'inference'        
-        if args.weights:
-            cfg.build[cfg.build.model].weights = args.weights
+        cfg.build.mode = 'inference'
+        cfg.build[model_name].weights = args.weights or cfg.build[model_name].weights
 
     load_modules(cfg)
     engine = build_engine(cfg)
-    visualizer = func_registry[args.visualizer] if args.visualizer else None
-    inference = Inference(args.input, engine, visualizer, input_fmt=args.format, save=args.save, save_dir=args.save_dir)
+
+    inference = Inference(args.input, engine, input_fmt=args.format, save=args.save, save_dir=args.save_dir)
+
+    pre_hooks, post_hooks = [cfg.build[model_name].inference.get(name) for name in ['pre_hooks', 'post_hooks']]
+    pre_hooks = setup_hooks(pre_hooks, inference.register_forward_pre_hook)
+    post_hooks = setup_hooks(post_hooks, inference.register_forward_post_hook)
+
     inference.run()
 
 
@@ -152,8 +168,7 @@ def main() -> None:
     test_parser = sub_parsers.add_parser('test', help='Description for test args')
     test_parser.add_argument('config', type=str, help='Configuration filename')
     test_parser.add_argument('input', type=str, help='Path to the input file')
-    test_parser.add_argument('--weights', type=str, required=False)    
-    test_parser.add_argument('--visualizer', type=str, required=False)
+    test_parser.add_argument('--weights', type=str, required=False)
     test_parser.add_argument('--format', type=str, default='RGB')
     test_parser.add_argument('--save', type=str, required=False)
     test_parser.add_argument('--save_dir', type=str, required=False, default='output/')
