@@ -28,7 +28,10 @@ class Registry(object):
         return _wrapper
 
     def __getitem__(self, name: str):
-        return self.__REGISTRY.get(name, None)
+        if name not in self.__REGISTRY:
+            print(self)
+            raise KeyError(f'Key {name} not found in the {self.name}')
+        return self.__REGISTRY.get(name)
 
     def __contains__(self, key: str):
         return key in self.__REGISTRY.keys()

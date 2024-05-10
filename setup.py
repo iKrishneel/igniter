@@ -24,6 +24,7 @@ install_requires = [
     'pytest-mock',
     'pytorch-ignite>=0.4.12',
     'tensorboard',
+    'argcomplete',
 ]
 
 

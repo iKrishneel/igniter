@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import argcomplete
 import argparse
 import importlib
 import logging
@@ -176,6 +177,7 @@ def main() -> None:
     export_parser.add_argument('weights', type=str, help='Path to the trained model file with extension .pt/.pth')
     export_parser.add_argument('--output', type=str, required=False, help='Output name or directory')
 
+    argcomplete.autocomplete(parser)
     args = parser.parse_args()
 
     logger.setLevel(getattr(logging, args.log_level))
