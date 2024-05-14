@@ -5,20 +5,33 @@ from typing import Any, Callable, Dict, Optional, Union
 
 from tabulate import tabulate
 
+from igniter.logger import logger
+
 
 @dataclass
 class Registry(object):
     name: str = 'REGISTRY'
     overwrite: bool = False
+    strict: bool = True
     __REGISTRY: Dict[str, object] = field(default_factory=lambda: {})
+
+    def __post_init__(self):
+        if self.overwrite and self.strict:
+            logger.warning('Both stict and overwrite flags are set. Not strict will take precedence!')
 
     def __call__(self, name_or_cls: Union[str, object] = None, prefix: Optional[str] = None):
         def _wrapper(cls):
             assert callable(cls)
             name = cls.__name__ if name_or_cls is None or not isinstance(name_or_cls, str) else name_or_cls
             name = prefix + name if prefix else name
-            if name in self.__REGISTRY and not self.overwrite:
-                raise ValueError(f'{cls} is already registered {self.__REGISTRY}')
+            if name in self.__REGISTRY:
+                if self.strict:
+                    raise ValueError(f'{cls} is already registered {self.__REGISTRY}')
+
+                if not self.overwrite:
+                    return
+                else:
+                    logger.warning(f'⚠️  Overwriting {name} ...')
             self.__REGISTRY[name] = cls
             return cls
 
@@ -40,15 +53,21 @@ class Registry(object):
         return self(name_or_cls=name_or_cls)
 
     def get(self, name: str) -> Callable:
-        return self[name]
+        return self[name] if name in self else None
 
     def remove(self, name: str) -> Any:
+        logger.warning(f'⚠️  Removing {name}')        
         return self.__REGISTRY.pop(name, None)
 
     def deregister(self, name: str) -> Any:
         return self.remove(name)
 
-    def clear(self):
+    def clear(self) -> None:
+        if self.strict:
+            logger.warning('⚠️ Cannot clear registry with strict flag set')
+            return
+
+        logger.warning(f'⚠️ Clearning {self.name}')
         self.__REGISTRY.clear()
 
     def __repr__(self):

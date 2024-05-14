@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import argcomplete
 import argparse
 import importlib
 import logging
@@ -10,6 +9,7 @@ import sys
 from collections import OrderedDict
 from typing import Any, Callable, Dict, List, Type
 
+import argcomplete
 from omegaconf import DictConfig, open_dict
 
 from igniter.builder import build_engine
