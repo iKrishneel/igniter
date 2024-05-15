@@ -16,6 +16,7 @@ from igniter.builder import build_engine
 from igniter.logger import logger
 from igniter.main import _run as igniter_run
 from igniter.main import get_full_config
+from igniter.utils import find_pattern, find_replace_pattern
 
 Namespace = Type[argparse.Namespace]
 
@@ -46,6 +47,12 @@ def import_modules(module: str) -> bool:
 def load_script(path: str) -> None:
     with open(path, 'r') as script:
         code = script.read()
+
+    is_empty = lambda x: len(list(x)) == 0
+    matches = find_pattern(code, r'from \.')    
+    if not is_empty(matches):
+        raise TypeError(f'Relatively import is not supported! Found relative import in {path}')
+
     exec(code, globals())
 
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os.path as osp
+import re
 from enum import Enum
 from typing import Tuple, Union
 
@@ -85,3 +86,16 @@ def get_dir_and_file_name(path: str, abs_path: bool = True, remove_ext: bool = T
     filename = osp.splitext(filename)[0] if remove_ext else filename
     dirname = osp.abspath(dirname) if abs_path and not osp.isabs(dirname) else dirname
     return dirname, filename
+
+
+def find_pattern(text: str, pattern: str):
+    assert all(isinstance(arg, str) for arg in (text, pattern))    
+
+    matches = re.finditer(pattern, text)
+    return matches
+
+
+def find_replace_pattern(text: str, replacement: str, pattern: str):
+    assert all(isinstance(arg, str) for arg in (text, pattern, replacement))
+
+    return re.sub(pattern, replacement, text)

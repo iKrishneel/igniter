@@ -10,7 +10,10 @@ from ..registry import io_registry
 
 @io_registry('tqdm')
 def tqdm_logger(io_cfg: DictConfig, cfg: DictConfig) -> Any:
-    from ignite.handlers import ProgressBar
+    try:
+        from ignite.handlers import ProgressBar
+    except ImportError:
+        from ignite.contrib.handlers import ProgressBar
 
     attrs = dict(io_cfg)
     attrs.pop('engine')
