@@ -122,8 +122,8 @@ def test_run(args: Namespace) -> None:
     inference = Inference(args.input, engine, input_fmt=args.format, save=args.save, save_dir=args.save_dir)
 
     pre_hooks, post_hooks = [cfg.build[model_name].inference.get(name) for name in ['pre_hooks', 'post_hooks']]
-    pre_hooks = setup_hooks(pre_hooks, inference.register_forward_pre_hook)
-    post_hooks = setup_hooks(post_hooks, inference.register_forward_post_hook)
+    setup_hooks(pre_hooks, inference.register_forward_pre_hook)
+    setup_hooks(post_hooks, inference.register_forward_post_hook)
 
     inference.run()
 
