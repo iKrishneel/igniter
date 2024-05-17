@@ -34,11 +34,22 @@ def get_weights_util(weight_path: str, **kwargs: Dict[str, Any]):
         logger.warning('Weight is empty!'.upper())
         return None
 
+    if 's3://' in weight_path:
+        state_dict = load_weights_from_s3(weight_path, kwargs.get('decoder', None))
+    elif weight_path.startswith('https://drive.google.com/'):
+        state_dict = load_weights_from_gdrive(weight_path)
+    elif weight_path.startswith('http://') or weight_path.startswith('https://'):
+        state_dict = load_weights_from_url(weight_path)
+    else:
+        state_dict = load_weights_from_file(weight_path)
+
+    """
     state_dict = (
         load_weights_from_s3(weight_path, kwargs.get('decoder', None))  # type: ignore
         if 's3://' in weight_path
         else load_weights_from_file(weight_path)
     )
+    """
     assert state_dict is not None, 'Weight dict is None'
     return state_dict
 
@@ -78,19 +89,39 @@ def load_weights(model: nn.Module, cfg: DictConfig, **kwargs):
     logger.info(f'{load_status}')
 
 
+def load_weights_from_file(path: str) -> Dict[str, torch.Tensor]:
+    assert osp.isfile(path), f'Not weight found {path}'
+    return torch.load(path, map_location='cpu')
+
+
+def get_path_or_load(filename: str) -> Union[str, Dict[str, Any]]:
+    root = osp.join(os.environ['HOME'], f'.cache/torch/{filename}') if not osp.isfile(filename) else filename
+    if osp.isfile(root):
+        logger.info(f'Cache found in cache, loading from {root}')
+        return root, load_weights_from_file(root)
+
+    os.makedirs('/'.join(osp.dirname(root).split('/')[:-1]), exist_ok=True)
+    return root, None
+
+
 def load_weights_from_s3(path: str, decoder: Union[Callable[..., Any], str, None] = None) -> Dict[str, Any]:
     bucket_name = path[5:].split('/')[0]
     assert len(bucket_name) > 0, 'Invalid bucket name'
 
     path = path[5 + len(bucket_name) + 1 :]
+    root, weights = get_path_or_load(path)
     # check if weight is in cache
-    root = osp.join(os.environ['HOME'], f'.cache/torch/{path}')
-    if osp.isfile(root):
-        logger.info(f'Cache found in cache, loading from {root}')
-        return load_weights_from_file(root)
+    # root = osp.join(os.environ['HOME'], f'.cache/torch/{path}')
+    # root = get_save_path(path)
+    # if osp.isfile(root):
+    #     logger.info(f'Cache found in cache, loading from {root}')
+    #     return load_weights_from_file(root)
+
+    if weights is not None:
+        return weights
 
     s3_client = S3Client(bucket_name=bucket_name)
-    os.makedirs('/'.join(root.split('/')[:-1]), exist_ok=True)
+    # os.makedirs('/'.join(root.split('/')[:-1]), exist_ok=True)
 
     logger.info(f'Loading weights from {path}')
     if decoder:
@@ -105,9 +136,45 @@ def load_weights_from_s3(path: str, decoder: Union[Callable[..., Any], str, None
     return weights  # type: ignore
 
 
-def load_weights_from_file(path: str) -> Dict[str, torch.Tensor]:
-    assert osp.isfile(path), f'Not weight found {path}'
-    return torch.load(path, map_location='cpu')
+def load_weights_from_url(url: str) -> Dict[str, torch.Tensor]:
+    import requests
+
+    logger.info(f'Loading weights from {url}')
+
+    filename = osp.basename(url)
+    root, weights = get_path_or_load(filename)
+
+    if weights is not None:
+        return weights
+
+    response = requests.get(url)
+    with open(root, 'wb') as f:
+        f.write(response.content)
+
+    return load_weights_from_file(root)
+
+
+def load_weights_from_gdrive(url: str):
+    import gdown
+
+    def get_id(url):
+        parts = url.split('/')
+        try:
+            index = parts.index('d')
+        except ValueError:
+            try:
+                index = parts.index('file') + 1
+            except ValueError:
+                return None
+        return parts[index + 1]
+
+    def download_file_from_google_drive(file_id, save_path):
+        url = 'https://drive.google.com/uc?id=' + file_id
+        gdown.download(url, save_path, quiet=False)
+
+    # gid = get_id(url)
+    # pathget_path_or_load(gid)
+    raise NotImplementedError('Not fully implemented')
 
 
 def save_weights(weights: Dict[str, Any], root: str) -> None:
