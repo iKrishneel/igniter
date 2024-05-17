@@ -100,7 +100,7 @@ def get_path_or_load(filename: str) -> Union[str, Dict[str, Any]]:
         logger.info(f'Cache found in cache, loading from {root}')
         return root, load_weights_from_file(root)
 
-    os.makedirs('/'.join(osp.dirname(root).split('/')[:-1]), exist_ok=True)
+    os.makedirs(osp.dirname(root), exist_ok=True)
     return root, None
 
 
@@ -110,18 +110,11 @@ def load_weights_from_s3(path: str, decoder: Union[Callable[..., Any], str, None
 
     path = path[5 + len(bucket_name) + 1 :]
     root, weights = get_path_or_load(path)
-    # check if weight is in cache
-    # root = osp.join(os.environ['HOME'], f'.cache/torch/{path}')
-    # root = get_save_path(path)
-    # if osp.isfile(root):
-    #     logger.info(f'Cache found in cache, loading from {root}')
-    #     return load_weights_from_file(root)
 
     if weights is not None:
-        return weights
+       return weights
 
     s3_client = S3Client(bucket_name=bucket_name)
-    # os.makedirs('/'.join(root.split('/')[:-1]), exist_ok=True)
 
     logger.info(f'Loading weights from {path}')
     if decoder:
