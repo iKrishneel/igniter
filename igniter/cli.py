@@ -16,7 +16,7 @@ from igniter.builder import build_engine
 from igniter.logger import logger
 from igniter.main import _run as igniter_run
 from igniter.main import get_full_config
-from igniter.utils import find_pattern, find_replace_pattern
+from igniter.utils import find_pattern
 
 Namespace = Type[argparse.Namespace]
 
@@ -49,7 +49,7 @@ def load_script(path: str) -> None:
         code = script.read()
 
     is_empty = lambda x: len(list(x)) == 0
-    matches = find_pattern(code, r'from \.')    
+    matches = find_pattern(code, r'from \.')
     if not is_empty(matches):
         raise TypeError(f'Relatively import is not supported! Found relative import in {path}')
 
@@ -133,7 +133,7 @@ def export(args: Namespace) -> None:
     utils = importlib.import_module('igniter.engine.utils')
     state_dict = utils.get_weights_util(weights)
 
-    assert osp.isfile(weights), f'Invalid model path {weights}'
+    assert state_dict is not None, f'Invalid model path {weights}'
     filename = osp.join(osp.dirname(weights), f'exported_{osp.basename(weights)}')
 
     if output:
@@ -150,6 +150,10 @@ def export(args: Namespace) -> None:
                 continue
             state_dict = value
             break
+
+    if args.safe_tensor:
+        _, ext = osp.splitext(filename)
+        filename = filename.replace(ext, '.safetensors')
 
     assert isinstance(state_dict, OrderedDict)
     logger.info(f'Saving weights to {filename}')
@@ -180,9 +184,9 @@ def main() -> None:
     test_parser.add_argument('--thresh', type=float, default=0.1)
 
     export_parser = sub_parsers.add_parser('export', help='Exports the train model for inference')
-    # train_parser.add_argument('config', type=str, help='Configuration filename')
     export_parser.add_argument('weights', type=str, help='Path to the trained model file with extension .pt/.pth')
     export_parser.add_argument('--output', type=str, required=False, help='Output name or directory')
+    export_parser.add_argument('--safe-tensor', action='store_true', required=False)
 
     argcomplete.autocomplete(parser)
     args = parser.parse_args()

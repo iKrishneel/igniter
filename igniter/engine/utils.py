@@ -3,7 +3,7 @@
 import os
 import os.path as osp
 from collections import OrderedDict
-from typing import Any, Callable, Dict, Union
+from typing import Any, Callable, Dict, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -43,13 +43,6 @@ def get_weights_util(weight_path: str, **kwargs: Dict[str, Any]):
     else:
         state_dict = load_weights_from_file(weight_path)
 
-    """
-    state_dict = (
-        load_weights_from_s3(weight_path, kwargs.get('decoder', None))  # type: ignore
-        if 's3://' in weight_path
-        else load_weights_from_file(weight_path)
-    )
-    """
     assert state_dict is not None, 'Weight dict is None'
     return state_dict
 
@@ -94,7 +87,7 @@ def load_weights_from_file(path: str) -> Dict[str, torch.Tensor]:
     return torch.load(path, map_location='cpu')
 
 
-def get_path_or_load(filename: str) -> Union[str, Dict[str, Any]]:
+def get_path_or_load(filename: str) -> Tuple[str, Dict[str, Any]]:
     root = osp.join(os.environ['HOME'], f'.cache/torch/{filename}') if not osp.isfile(filename) else filename
     if osp.isfile(root):
         logger.info(f'Cache found in cache, loading from {root}')
@@ -112,7 +105,7 @@ def load_weights_from_s3(path: str, decoder: Union[Callable[..., Any], str, None
     root, weights = get_path_or_load(path)
 
     if weights is not None:
-       return weights
+        return weights
 
     s3_client = S3Client(bucket_name=bucket_name)
 
@@ -171,4 +164,13 @@ def load_weights_from_gdrive(url: str):
 
 
 def save_weights(weights: Dict[str, Any], root: str) -> None:
-    torch.save(weights, root)
+    save_func = torch.save
+    if '.safetensors' in root:
+        try:
+            from safetensors.torch import save_file
+
+            save_func = save_file
+        except ImportError as e:
+            logger.warning(f'{e}')
+
+    save_func(weights, root)

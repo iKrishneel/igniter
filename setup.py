@@ -25,6 +25,7 @@ install_requires = [
     'pytorch-ignite>=0.4.12',
     'tensorboard',
     'argcomplete',
+    'safetensors',
 ]
 
 
