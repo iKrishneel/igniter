@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import importlib
 import os
 import os.path as osp
 from collections import OrderedDict
@@ -82,11 +83,6 @@ def load_weights(model: nn.Module, cfg: DictConfig, **kwargs):
     logger.info(f'{load_status}')
 
 
-def load_weights_from_file(path: str) -> Dict[str, torch.Tensor]:
-    assert osp.isfile(path), f'Not weight found {path}'
-    return torch.load(path, map_location='cpu')
-
-
 def get_path_or_load(filename: str) -> Tuple[str, Dict[str, Any]]:
     root = osp.join(os.environ['HOME'], f'.cache/torch/{filename}') if not osp.isfile(filename) else filename
     if osp.isfile(root):
@@ -163,14 +159,39 @@ def load_weights_from_gdrive(url: str):
     raise NotImplementedError('Not fully implemented')
 
 
+def load_weights_from_file(path: str) -> Dict[str, torch.Tensor]:
+    assert osp.isfile(path), f'Not weight found {path}'
+
+    if use_safe_tensors(path):
+        from safetensors import safe_open
+
+        weights = OrderedDict()
+        with safe_open(path, framework='pt', device='cpu') as f:
+            for key in f.keys():
+                weights[key] = f.get_tensor(key)
+        assert len(weights) > 0, f'No weights loaded from {path}'
+    else:
+        weights = torch.load(path, map_location='cpu')
+    return weights
+
+
 def save_weights(weights: Dict[str, Any], root: str) -> None:
     save_func = torch.save
-    if '.safetensors' in root:
-        try:
-            from safetensors.torch import save_file
+    if use_safe_tensors(root):
+        from safetensors.torch import save_file
 
-            save_func = save_file
-        except ImportError as e:
-            logger.warning(f'{e}')
+        save_func = save_file
 
     save_func(weights, root)
+
+
+def use_safe_tensors(path: str) -> bool:
+    is_safe_tensor = '.safetensors' in path
+
+    try:
+        importlib.import_module('safetensors.torch').save_file
+    except ModuleNotFoundError as e:
+        logger.warning(f'{e}')
+        is_safe_tensor = False
+
+    return is_safe_tensor
