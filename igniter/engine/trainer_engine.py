@@ -152,7 +152,7 @@ class TrainerEngine(Engine):
             'model': self._model.state_dict(),
             'cfg': self._cfg,
             'optimizer': self._optimizer.state_dict(),
-            'scheduler': self._scheduler.state_dict(),
+            'scheduler': self._scheduler.state_dict() if self._scheduler is not None else None,
             'state': self.state,
         }
 

@@ -62,19 +62,21 @@ def build_transforms(cfg: DictConfig, name: Optional[str] = None) -> Union[List[
         engine = attrs.pop('engine', 'torchvision.transforms')
         module = importlib.import_module(engine)
 
-        transform_list = []
+        try:
+            compose = module.v2.Compose
+        except AttributeError:
+            compose = module.Compose
+
+        transform_list = []        
         for obj, kwargs in attrs.items():
+            if 'compose' in obj.lower() and kwargs is not None:
+                compose = transform_registry.get(kwargs) or compose
+                continue
             transform = transform_registry[obj] if obj in transform_registry else getattr(module, obj)
             if inspect.isclass(transform):
                 kwargs = kwargs or {}
                 transform = transform(**kwargs)
             transform_list.append(transform)
-
-        try:
-            compose = module.v2.Compose
-        except AttributeError:
-            compose = module.Compose
-        compose = transform_registry.get('Compose') or compose
         transforms[key] = compose(transform_list)
 
     return transforms[name] if name else transforms
