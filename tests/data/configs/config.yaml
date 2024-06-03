@@ -1,4 +1,5 @@
 device: "cpu"
+dtype: float32
 
 transforms:
   train: &train
