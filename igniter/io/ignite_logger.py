@@ -19,6 +19,7 @@ def tqdm_logger(io_cfg: DictConfig, cfg: DictConfig) -> Any:
     attrs.pop('engine')
 
     attach = dict(attrs.pop('attach', {}))
+    attach.pop('every', None)
     attach['metric_names'] = attach.get('metric_names', 'all')
 
     p_logger = ProgressBar(**attrs)
