@@ -138,6 +138,8 @@ def load_weights_from_url(url: str) -> Dict[str, torch.Tensor]:
 
 def load_weights_from_gdrive(url: str):
     import gdown
+    import requests
+    from bs4 import BeautifulSoup
 
     def get_id(url):
         parts = url.split('/')
@@ -150,13 +152,22 @@ def load_weights_from_gdrive(url: str):
                 return None
         return parts[index + 1]
 
-    def download_file_from_google_drive(file_id, save_path):
-        url = 'https://drive.google.com/uc?id=' + file_id
-        gdown.download(url, save_path, quiet=False)
+    def get_filename(html_response: str) -> str:
+        soup = BeautifulSoup(html_response, 'html.parser')
+        return soup.find('span', class_='uc-name-size').find('a').text
 
-    # gid = get_id(url)
-    # pathget_path_or_load(gid)
-    raise NotImplementedError('Not fully implemented')
+    url = 'https://drive.google.com/uc?id=' + get_id(url)
+    session = requests.session()
+    res = session.get(url, stream=True, verify=False)
+
+    filename = get_filename(res.content)
+
+    save_path, weights = get_path_or_load(filename)
+    if weights is not None:
+        return weights
+
+    gdown.download(url, save_path, quiet=False)
+    return get_path_or_load(save_path)[1]
 
 
 def load_weights_from_file(path: str) -> Dict[str, torch.Tensor]:
