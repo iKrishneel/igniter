@@ -1,9 +1,9 @@
-device: "cpu"
+device: cpu
 dtype: float32
 
 transforms:
   train: &train
-    engine: "torchvision.transforms"
+    engine: torchvision.transforms
     # ResizeLongestSide:
     #   size: 1024
     ToTensor:
@@ -22,8 +22,20 @@ transforms:
 models:
   test_model:
 
+solvers:
+  SGD:
+    lr: 0.01
+
+  AdamW:
+    lr: 0.01
+    per_parameter:
+      conv1:
+        lr: 0.0005
+
 build:
   test_model:
     weights: "/tmp/igniter/tests/model.pth"
+    train:
+      solver: SGD
 
   model: "test_model"

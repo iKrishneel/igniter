@@ -114,9 +114,34 @@ def build_model(name: str, cfg: DictConfig) -> nn.Module:
 def build_optim(model_name: str, cfg: DictConfig, model: nn.Module):
     name = cfg.build[model_name].train.solver
     logger.info(f'Building optimizer {name}')
-    engine = cfg.solvers.get('engine', 'torch.optim')
-    module = importlib.import_module(engine)
-    return getattr(module, name)(model.parameters(), **cfg.solvers[name])
+
+    def global_lr_params(model, names: List[str]) -> List[torch.Tensor]:
+        def has_name(name, names):
+            has = False
+            for n in names:
+                has |= n in name
+            return has
+        return [param for name, param in model.named_parameters() if not has_name(name, names) and param.requires_grad]
+
+    def legacy(cfg, name):
+        engine = cfg.solvers.get('engine', 'torch.optim')
+        module = importlib.import_module(engine)
+        params = model.parameters()
+        pp_args = dict(cfg.solvers[name])
+        if 'per_parameter' in pp_args:
+            per_parameter = pp_args.pop('per_parameter')
+            layers = list(per_parameter.keys())
+            params_dict = [{'params': global_lr_params(model, layers)}]
+            for lname, value in per_parameter.items():
+                pm = {'params': [p for n, p in model.named_parameters() if lname in n and p.requires_grad], **value}
+                params_dict.append(pm)
+            params = params_dict
+        return getattr(module, name)(params, **pp_args)
+
+    if name not in func_registry:
+        return legacy(cfg, name)
+
+    return func_registry[name](model, cfg.solvers[name])
 
 
 @configurable
