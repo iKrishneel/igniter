@@ -176,7 +176,9 @@ def build_event_handlers(model_name: str, cfg: DictConfig, engine: Engine) -> No
             event_type = event_args.pop('event_type')
             engine.add_event_handler(event_type, event_registry[func_name], **event_args)
 
-    for mode in MODES:
+    mode = cfg.build.get('mode', None)
+    modes = [mode] if mode else MODES
+    for mode in modes:
         if mode not in _cfg:
             continue
         _build(_cfg[mode].get(attribut_name, []))
