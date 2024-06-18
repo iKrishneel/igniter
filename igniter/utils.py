@@ -16,13 +16,44 @@ class Node(Enum):
     MULTI = 'multi'
 
 
-def get_world_size(cfg: DictConfig) -> int:
+def _get_world_size(cfg: DictConfig) -> int:
     nproc = cfg.distributed.nproc_per_node
     if cfg.distributed.type == Node.SINGLE.value:
         world_size = nproc
     else:
         world_size = nproc * cfg.distributed.dist_config.nnodes
     return world_size
+
+
+def get_world_size(cfg: DictConfig = None) -> int:
+    if cfg is not None:
+        return _get_world_size(cfg)
+    if not is_dist_avail_and_initalized():
+        return 1
+    return torch.distributed.get_world_size()
+
+
+def is_dist_avail_and_initalized() -> bool:
+    if not torch.distributed.is_available():
+        return False
+    if not torch.distributed.is_initialized():
+        return False
+    return True
+
+
+def get_world_size_and_rank() -> Tuple[int, ...]:
+    world_size = get_world_size()
+    return world_size, get_rank()
+
+
+def get_rank() -> int:
+    if not is_dist_avail_and_initalized():
+        return 1
+    return torch.distributed.get_rank()
+
+
+def is_main_process() -> bool:
+    return get_rank() == 0
 
 
 def is_distributed(cfg: DictConfig) -> bool:

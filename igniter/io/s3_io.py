@@ -9,6 +9,7 @@ from typing import Any, Dict, Union
 import torch
 from omegaconf import DictConfig
 
+from .. import utils
 from ..registry import io_registry
 from .s3_client import S3Client
 
@@ -60,16 +61,20 @@ class FileIO(object):
         return cls(root=io_cfg.root, cfg=cfg)
 
     def __call__(self, data: Any, filename: str):
-        assert len(filename) > 0, 'Invalid filename'
+        if utils.is_main_process():
+            print(">>> ", utils.get_rank())
+            assert len(filename) > 0, 'Invalid filename'
 
-        filename = osp.join(self.root, filename)
-        os.makedirs(osp.dirname(filename), exist_ok=True)
+            filename = osp.join(self.root, filename)
+            os.makedirs(osp.dirname(filename), exist_ok=True)
 
-        if self.extension not in filename:
-            filename += self.extension
+            if self.extension not in filename:
+                filename += self.extension
 
-        # TODO: Check the data type and use appropriate writer
-        self._save_tensors(data, filename)
+            # TODO: Check the data type and use appropriate writer
+            self._save_tensors(data, filename)
+
+        # torch.distributed.barrier()
 
     def _save_tensors(self, data: Union[Dict[str, Any], torch.Tensor], filename: str):
         torch.save(data, filename)
