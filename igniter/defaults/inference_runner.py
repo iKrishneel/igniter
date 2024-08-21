@@ -17,7 +17,7 @@ from igniter.logger import logger
 from igniter.registry import func_registry
 
 IMAGE_EXTS: List[str] = ['.jpg', '.png', '.jpeg']
-VIDEO_EXTS: List[str] = ['.avi', '.mp4']
+VIDEO_EXTS: List[str] = ['.avi', '.mp4', '.mov']
 INPUT_FMTS: List[str] = ['RGB', 'BGR', 'GRAY', 'MONO']
 
 

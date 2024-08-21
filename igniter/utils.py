@@ -29,7 +29,7 @@ def get_world_size(cfg: DictConfig = None) -> int:
     if cfg is not None:
         return _get_world_size(cfg)
     if not is_dist_avail_and_initalized():
-        return 1
+        return 0
     return torch.distributed.get_world_size()
 
 
@@ -48,7 +48,7 @@ def get_world_size_and_rank() -> Tuple[int, ...]:
 
 def get_rank() -> int:
     if not is_dist_avail_and_initalized():
-        return 1
+        return 0
     return torch.distributed.get_rank()
 
 
@@ -120,7 +120,7 @@ def get_dir_and_file_name(path: str, abs_path: bool = True, remove_ext: bool = T
 
 
 def find_pattern(text: str, pattern: str):
-    assert all(isinstance(arg, str) for arg in (text, pattern))    
+    assert all(isinstance(arg, str) for arg in (text, pattern))
 
     matches = re.finditer(pattern, text)
     return matches
@@ -130,3 +130,20 @@ def find_replace_pattern(text: str, replacement: str, pattern: str):
     assert all(isinstance(arg, str) for arg in (text, pattern, replacement))
 
     return re.sub(pattern, replacement, text)
+
+
+def resolve_env_vars(string: str, pattern: str = r'\$(\w+)|\$\{(\w+)\}') -> str:
+    import os
+
+    if '$' not in string:
+        return string
+
+    def env_var_replacer(match: str):
+        var_name = match.group(1)
+        try:
+            return os.environ.get(var_name, match.group(0))
+        except TypeError:
+            logger.warning(f'{var_name} not found')
+
+    resolved_string = re.sub(pattern, env_var_replacer, string)
+    return osp.normpath(resolved_string)

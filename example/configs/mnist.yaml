@@ -66,6 +66,12 @@ build:
       epochs: 10
       func: "default"
       transforms: "train"
+      event_handlers:
+        default_checkpoint_handler:
+          event_type: EPOCH_COMPLETED
+          root: /tmp/weights/
+          prefix: mnist_
+
     val:
       epoch: 1
       # step: 256
