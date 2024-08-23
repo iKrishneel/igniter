@@ -173,8 +173,10 @@ def build_event_handlers(model_name: str, cfg: DictConfig, engine: Engine) -> No
     def _build(events: List[Dict[str, str]]) -> None:
         for func_name in events:
             event_args = dict(events[func_name])
-            event_type = event_args.pop('event_type')
-            engine.add_event_handler(event_type, event_registry[func_name], **event_args)
+            event_types = event_args.pop('event_type')
+            event_types = event_types.replace(' ', '').split('|')
+            for event_type in event_types:
+                engine.add_event_handler(event_type, event_registry[func_name], **event_args)
 
     mode = cfg.build.get('mode', None)
     modes = [mode] if mode else MODES

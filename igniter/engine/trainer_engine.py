@@ -71,7 +71,7 @@ class TrainerEngine(Engine):
         self._dataloader = dataloader
 
         self.log_handler = ProgressBar(persist=False)
-        self.checkpoint = None
+        # self.checkpoint = None
         if io_ops:
             self.__dict__.update(io_ops)
 
@@ -92,8 +92,8 @@ class TrainerEngine(Engine):
         self.add_event_handler(scheduler_event, self.scheduler)
         self.add_event_handler(Events.ITERATION_COMPLETED, self.summary)
 
-        self.checkpoint_handler()
-        self.add_persistent_logger()
+        # self.checkpoint_handler()
+        # self.add_persistent_logger()
 
         OmegaConf.save(cfg, os.path.join(self.log_dir, 'config.yaml'))
 
@@ -119,35 +119,36 @@ class TrainerEngine(Engine):
 
             self._writer.add_scalar(f'train/{key}', value, self.state.iteration)
 
-    def checkpoint_handler(self, prefix: str = '%s') -> None:
-        if self._cfg.solvers.snapshot <= 0:
-            logger.warning('Not model checkpoint will be saved because snapshot <= 0')
-            return
+    # def checkpoint_handler(self, prefix: str = '%s') -> None:
+    #     if self._cfg.solvers.snapshot <= 0:
+    #         logger.warning('Model checkpoint wont be saved because snapshot <= 0')
+    #         return
 
-        def _checkpointer():
-            filename = prefix % f'model_{str(self.state.epoch).zfill(7)}.pt'
-            self.checkpoint(self.get_state_dict(), filename)
+    #     def _checkpointer():
+    #         filename = prefix % f'model_{str(self.state.epoch).zfill(7)}.pt'
+    #         self.checkpoint(self.get_state_dict(), filename)
 
-        if self.checkpoint is None:
-            default_path = f'./logs/{self._cfg.build.model}/models/{get_datetime()}'
-            logger.info(f'No checkpoint handler! Using default and saving {default_path}')
+    #     if self.checkpoint is None:
+    #         default_path = f'./logs/{self._cfg.build.model}/models/{get_datetime()}'
+    #         logger.info(f'No checkpoint handler! Using default and saving {default_path}')
 
-            _checkpointer = Checkpoint(
-                {'model': self._model},
-                default_path,
-                n_saved=2,
-                filename_prefix=prefix % '',
-            )
+    #         _checkpointer = Checkpoint(
+    #             {'model': self._model},
+    #             default_path,
+    #             n_saved=2,
+    #             filename_prefix=prefix % '',
+    #         )
 
-        self.add_event_handler(
-            Events.ITERATION_COMPLETED(every=self._cfg.solvers.snapshot) | Events.EPOCH_COMPLETED, _checkpointer
-        )
+    #     self.add_event_handler(
+    #         Events.ITERATION_COMPLETED(every=self._cfg.solvers.snapshot) | Events.EPOCH_COMPLETED, _checkpointer
+    #     )
 
     def get_lr(self) -> float:
         lr = self._optimizer.param_groups[0]['lr']
         return lr[0] if isinstance(lr, list) else lr
 
-    def get_state_dict(self) -> Dict[str, Any]:
+    def get_state_dict(self, save_options: str = 'model') -> Dict[str, Any]:
+        assert isinstance(save_options, str), f'Excepts str but got {type(save_options)}'
         state_dict = {
             'model': self._model.state_dict(),
             'cfg': self._cfg,
@@ -156,8 +157,13 @@ class TrainerEngine(Engine):
             'state': self.state,
         }
 
-        save_options = self._cfg.io.checkpoint.get('save', 'all') if hasattr(self._cfg.io, 'checkpoint') else 'state'
-        if save_options == 'all':
+        save_options = save_options.lower()
+        if save_options not in state_dict:
+            logger.warning(
+                f'{save_options} not available. Options are {state_dict.keys()}.\nSetting save_option=model'
+            )
+
+        if save_options in ['all', 'full']:
             return state_dict
 
         for key in ['optimizer', 'scheduler', 'state']:

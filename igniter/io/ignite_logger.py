@@ -9,33 +9,17 @@ from ..registry import io_registry
 
 
 @io_registry('tqdm')
-def tqdm_logger(io_cfg: DictConfig, cfg: DictConfig) -> Any:
+def tqdm_logger(**kwargs) -> Any:  
     try:
         from ignite.handlers import ProgressBar
     except ImportError:
         from ignite.contrib.handlers import ProgressBar
 
-    attrs = dict(io_cfg)
-    attrs.pop('engine')
-
-    attach = dict(attrs.pop('attach', {}))
-    attach.pop('every', None)
-    attach['metric_names'] = attach.get('metric_names', 'all')
-
-    p_logger = ProgressBar(**attrs)
-    p_logger._attach_kwargs = attach
-    return p_logger
+    return ProgressBar(**kwargs)
 
 
 @io_registry('fair')
-def fair_logger(io_cfg: DictConfig, cfg: DictConfig) -> Any:
+def fair_logger(**kwargs) -> Any:
     from .logger_handles import FBResearchLogger
 
-    attrs = dict(io_cfg)
-    attrs.pop('engine')
-    attach = dict(attrs.pop('attach', {}))
-    attach['name'] = cfg.build.model
-
-    fb_logger = FBResearchLogger(logger=logger, **attrs)
-    fb_logger._attach_kwargs = attach
-    return fb_logger
+    return FBResearchLogger(logger=logger, **kwargs)

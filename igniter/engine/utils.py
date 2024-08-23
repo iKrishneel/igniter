@@ -71,7 +71,13 @@ def load_weights(model: nn.Module, cfg: DictConfig, **kwargs):
         return
 
     state_dict = model.state_dict()
-    wpth = _remap_keys(weight_dict['model'] if not isinstance(weight_dict, OrderedDict) else weight_dict)
+    key = next(iter(state_dict.keys()))
+
+    #  = weight_dict['model'] if not isinstance(weight_dict, OrderedDict) or key not in weight_dict else weight_dict
+    if 'model' in weight_dict:
+        weight_dict = weight_dict['model']
+    
+    wpth = _remap_keys(weight_dict)
 
     for key in state_dict:
         if key not in wpth or state_dict[key].shape == wpth[key].shape:

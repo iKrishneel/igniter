@@ -43,19 +43,19 @@ solvers:
       step_size: 20
       gamma: 0.1
 
-io:
+# io:
   # checkpoint:
   #   engine: 's3_writer'
   #   bucket_name: "sr-shokunin"
   #   root: "perception/models/example/mnist/"
-  checkpoint:
-    engine: 'file_writer'
-    root: "/root/krishneel/Downloads/mnist/models/mnist/"
+  # checkpoint:
+  #   engine: 'file_writer'
+  #   root: "/root/krishneel/Downloads/mnist/models/mnist/"
 
-  log_handler:
-    engine: 'fair'
-    attach:
-      every: 10
+  # log_handler:
+  #   engine: 'fair'
+  #   attach:
+  #     every: 10
 
 build:
   mnist:
@@ -68,9 +68,15 @@ build:
       transforms: "train"
       event_handlers:
         default_checkpoint_handler:
-          event_type: EPOCH_COMPLETED
+          event_type: EPOCH_COMPLETED | STARTED
           root: /tmp/weights/
           prefix: mnist_
+        default_logging_handler:
+          event_type: STARTED
+          type: fair
+          attach:
+            name: mnist
+            every: 10
 
     val:
       epoch: 1
