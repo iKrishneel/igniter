@@ -277,12 +277,37 @@ def validate_config(cfg: DictConfig):
 
 
 @configurable
+def purge_cfg(model_name: str, cfg: DictConfig):
+    OmegaConf.set_struct(cfg, False)
+
+    mode = cfg.build.mode
+    
+    for m in MODES:
+        if mode == m or m not in cfg.build[model_name].keys():
+            continue
+        del cfg.build[model_name][m]
+    
+    def recurse(config: DictConfig):
+        for key in config:
+            # TODO: Implement for all valid keys to keep
+            if key == 'solver':
+                pass
+        
+    
+    recurse(cfg.build[model_name][mode])
+    
+    # import IPython, sys; IPython.embed(); sys.exit()
+    
+    
+
+@configurable
 def build_engine(model_name, cfg: DictConfig) -> Callable:
     mode = cfg.build.get('mode', 'train')
     assert mode in MODES, f'Invalid mode {mode}. Must be one of {MODES}'
 
     logger.info(f'>>> Building Engine with mode {mode}')
     validate_config(cfg)
+    # purge_cfg(cfg)
 
     assert mode in MODES, f'Mode must be one of {MODES} but got {mode}'
     if 'workdir' in cfg:
