@@ -34,7 +34,7 @@ def build_func(func_name: Union[str, Dict[str, Any]] = 'default'):
     if isinstance(func_name, (dict, DictConfig)):
         assert len(func_name) == 1, f'Current only supports one key but given {func_name.keys()}'
         for key, value in func_name.items():
-            return functools.partial(func_registry[key], **value)
+            return functools.partial(func_registry[key], **(value or {}))
     func = func_registry[func_name]
     assert func, f'Function {func_name} not found in registry \n{func_registry}'
     return func
@@ -290,7 +290,9 @@ def build_engine(model_name, cfg: DictConfig) -> Callable:
     logger.info(f'\033[32m\n{yaml_data} \033[0m')
 
     mode_attrs = cfg.build[model_name].get(mode, None)
-    func_name = mode_attrs.get('func', 'default') if mode_attrs else 'default'
+
+    key = 'forward' if 'forward' in mode_attrs else 'func'
+    func_name = mode_attrs.get(key, 'default') if mode_attrs else 'default'
 
     process_func = build_func(func_name)
     model = build_model(cfg)

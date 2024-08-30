@@ -64,10 +64,10 @@ class Registry(object):
 
     def clear(self) -> None:
         if self.strict:
-            logger.warning('⚠️ Cannot clear registry with strict flag set')
+            logger.warning('⚠️  Cannot clear registry with strict flag set')
             return
 
-        logger.warning(f'⚠️ Clearning {self.name}')
+        logger.warning(f'⚠️  Clearning {self.name}')
         self.__REGISTRY.clear()
 
     def __repr__(self):
@@ -82,7 +82,7 @@ model_registry = Registry(name='Model Registry')
 dataset_registry = Registry(name='Dataset Registry')
 solver_registry = Registry(name='Solver Registry')
 io_registry = Registry(name='IO Registry')
-func_registry = Registry(name='Proc Registry')
+func_registry = Registry(name='Function Registry')
 transform_registry = Registry(name='Transform Registry')
 event_registry = Registry(name="Event Handlers Registry")
 
