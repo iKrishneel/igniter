@@ -40,7 +40,7 @@ class Inference(object):
         assert osp.isfile(self.filename), f'Invalid path: {self.filename}!'
 
         supported_exts, ext = IMAGE_EXTS + VIDEO_EXTS, osp.splitext(self.filename)[1]
-        assert ext in supported_exts, f'Invalid file {self.filename}. Supported file types are {supported_exts}'
+        assert ext.lower() in supported_exts, f'Invalid file {self.filename}. Supported file types are {supported_exts}'
         assert self.input_fmt.upper() in ['RGB', 'BGR', 'GRAY', 'MONO'], f'Invalid input format {self.input_fmt}'
 
         if self.save:
