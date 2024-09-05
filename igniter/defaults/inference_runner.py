@@ -58,8 +58,8 @@ class Inference(object):
         self()
 
     def load_image(self) -> None:
-        image = Image.open(self.filename)
-        self.process(image)
+        image = Image.open(self.filename).convert('RGB')
+        self.process(image, filename=self.filename)
 
     def load_video(self) -> None:
         logger.info(f'Loading video from: {self.filename}')
@@ -74,20 +74,19 @@ class Inference(object):
         logger.info(f'Total Processing time: {time.time() - start_time}')
         logger.info('Completed!')
 
-    def process(self, image: Union[Image.Image, np.ndarray]) -> Any:
+    def process(self, image: Union[Image.Image, np.ndarray], filename: str = None) -> Any:
         image = np.asarray(image) if not isinstance(image, np.ndarray) else image
         start_time = time.time()
-        pred = self._process(image)
+        pred = self._process(image, filename)
         logger.info(f'Inference time: {time.time() - start_time}')
         return pred
 
     @torch.inference_mode()
-    def _process(self, image: Image) -> Any:
+    def _process(self, image: Image, filename: str = None) -> Any:
         image = self._run_hooks(image, self._pre_hooks)
         pred = self.engine(image)
         # TODO(iKrishneel): make this into a collate function
-        data = {'image': image, 'pred': pred}
-
+        data = {'image': image, 'pred': pred, 'filename': filename}
         pred = self._run_hooks(data, self._post_hooks)
         return pred
 
