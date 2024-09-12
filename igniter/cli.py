@@ -93,6 +93,11 @@ def train_val_run(args: Namespace, is_train: bool) -> None:
         cfg.options.train = is_train
         cfg.options.eval = not is_train
 
+        if args.bs is not None:
+            cfg.datasets.dataloader.batch_size = args.bs
+        if args.workers is not None:
+            cfg.datasets.dataloader.num_workers = args.workers
+
     load_modules(cfg)
     igniter_run(cfg)
 
@@ -162,13 +167,14 @@ def export(args: Namespace) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description='Igniter Command Line Interface (CLI)')
-    # parser.add_argument('config', type=str, help='Configuration filename')
     parser.add_argument('--log-level', type=str, default='INFO')
 
     sub_parsers = parser.add_subparsers(dest='options', help='Options')
 
     train_parser = sub_parsers.add_parser('train', help='Description for training args')
     train_parser.add_argument('config', type=str, help='Configuration filename')
+    train_parser.add_argument('--bs', type=int, required=False, help='Batch size of the data')
+    train_parser.add_argument('--workers', type=int, required=False, help='Number of workers for dataloader')
 
     eval_parser = sub_parsers.add_parser('eval', help='Description for evaluation args')
     eval_parser.add_argument('config', type=str, help='Configuration filename')

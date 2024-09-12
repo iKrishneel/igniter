@@ -341,11 +341,19 @@ def build_engine(model_name, cfg: DictConfig) -> Callable:
         key = 'test' if 'test' in cfg.build[model_name] else 'inference'
         attrs = cfg.build[model_name].get(key, None)
         engine_name = attrs.get('engine', 'default_inference') if attrs else 'default_inference'
-        logger.info(f'>>> Inference engine: {engine_name}')
 
+        engine_kwargs = {}
+        if isinstance(engine_name, (dict, DictConfig)):
+            assert len(engine_name) == 1, f'engine should have one key but got {len(engine_name)}'
+            key = next(iter(engine_name))
+            engine_kwargs = engine_name[key]
+            engine_name = key
+        
+        logger.info(f'>>> Inference engine: {engine_name}')
+        
         build_kwargs, key = cfg.build[model_name], 'transforms'
         transforms = build_transforms(cfg, build_kwargs[mode].get(key) or build_kwargs.get(key) or mode)
-        engine = engine_registry[engine_name](cfg, model, transforms=transforms)
+        engine = engine_registry[engine_name](cfg, model, transforms=transforms, **engine_kwargs)
     else:
         raise TypeError(f'Unknown mode {mode}')
 

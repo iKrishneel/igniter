@@ -58,18 +58,20 @@ class Inference(object):
         self()
 
     def load_image(self) -> None:
-        image = Image.open(self.filename).convert('RGB')
+        image = Image.open(self.filename).convert(self.input_fmt)
         self.process(image, filename=self.filename)
 
     def load_video(self) -> None:
         logger.info(f'Loading video from: {self.filename}')
         start_time = time.time()
         cap = cv.VideoCapture(self.filename)
+        counter = 1
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
-            self.process(frame)
+            self.process(frame, str(counter))
+            counter += 1
         cap.release()
         logger.info(f'Total Processing time: {time.time() - start_time}')
         logger.info('Completed!')
