@@ -93,9 +93,9 @@ def train_val_run(args: Namespace, is_train: bool) -> None:
         cfg.options.train = is_train
         cfg.options.eval = not is_train
 
-        if args.bs is not None:
+        if hasattr(args, 'bs') and args.bs is not None:
             cfg.datasets.dataloader.batch_size = args.bs
-        if args.workers is not None:
+        if hasattr(args, 'workers') and args.workers is not None:
             cfg.datasets.dataloader.num_workers = args.workers
 
     load_modules(cfg)
