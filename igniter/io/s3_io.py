@@ -62,7 +62,6 @@ class FileIO(object):
 
     def __call__(self, data: Any, filename: str):
         if utils.is_main_process():
-            print(">>> ", utils.get_rank())
             assert len(filename) > 0, 'Invalid filename'
 
             filename = osp.join(self.root, filename)
