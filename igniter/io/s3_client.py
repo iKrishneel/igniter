@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import re
 import threading
 from dataclasses import dataclass
 from io import BytesIO
@@ -78,6 +79,23 @@ class S3Client(object):
         except ClientError as e:
             print(f'{e}\nFile Not Found! {filename}')
             return {}
+
+    def upload(self, filename: str, object_key: str) -> None:
+        assert os.path.isfile(filename), f'{filename} not found!'
+        assert isinstance(object_key, str)
+
+        def _is_valid_filename(string: str) -> bool:
+            pattern = r"^(?:[\w,\s-]+/)*[\w,\s-]+\.[A-Za-z]{2,5}$"
+            return bool(re.match(pattern, string))
+
+        object_key = object_key.lstrip('/')
+        object_key = (
+            os.path.join(object_key, os.path.basename(filename)) if not _is_valid_filename(object_key) else object_key
+        )
+
+        logger.info(f'Uploading {filename} to s3://{self.bucket_name}/{object_key}')
+        self.client.upload_file(filename, Bucket=self.bucket_name, Key=object_key)
+        logger.info('File Uploaded!')
 
     def decode_file(self, s3_file, decoder: Optional[Union[Callable[..., Any], str]] = None) -> Type[Any]:
         content_type = s3_file['ResponseMetadata']['HTTPHeaders']['content-type']
