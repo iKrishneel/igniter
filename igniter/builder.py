@@ -94,9 +94,15 @@ def build_dataloader(model_name: str, cfg: DictConfig, mode: str) -> DataLoader:
     key: str = 'transforms'
     build_kwargs = cfg.build[model_name]
     ds_name = build_kwargs.dataset
+    logger.info(f'>>> Dataset: {ds_name}')
 
     cls = dataset_registry[ds_name]
-    transforms = build_transforms(cfg, build_kwargs[mode].get(key) or build_kwargs.get(key) or mode)
+    try:
+        transforms = build_transforms(cfg, build_kwargs[mode].get(key) or build_kwargs.get(key) or mode)
+    except AssertionError:
+        logger.warning('No transforms for Dataloader')
+        transforms = None
+
     dl_kwargs = dict(cfg.datasets.dataloader)
 
     collate_fn = build_func(dl_kwargs.pop('collate_fn', 'collate_fn'))

@@ -206,7 +206,7 @@ class EvaluationEngine(Engine):
     def __call__(self):
         self._iter = 0
         val_cfg = self._cfg.build[model_name(self._cfg)].val
-        epoch_length = val_cfg.get('iters_per_epoch', len(self._dataloader))
+        epoch_length = int(val_cfg.get('iters_per_epoch', len(self._dataloader)))
         epochs = int(getattr(val_cfg, 'epochs', 1))
         if epochs < 1:
             raise ValueError(f'Epochs must be greater then 0 but got {epochs}')
