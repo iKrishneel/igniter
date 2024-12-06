@@ -115,6 +115,9 @@ class S3Client(object):
             thread = threading.Thread(target=self._write, args=(buffer, path))
             thread.start()
 
+    def head_object(self, path: str):
+        return self.client.head_object(Bucket=self.bucket_name, Key=path)
+
     def _write(self, buffer: BytesIO, path: str):
         assert isinstance(buffer, BytesIO), f'Except type {type(BytesIO)} but got {type(buffer)}'
         assert len(path), 'Invalid path: {path}'
