@@ -51,6 +51,9 @@ def configurable(func: Callable):
 
 
 def build_transforms(cfg: DictConfig, name: Optional[str] = None) -> Union[List[Any], Dict[str, List[Any]]]:
+    if not cfg.get('transforms', None):
+        return
+
     if name is not None:
         assert name in cfg.transforms, f'{name} not found. Available keys in transforms are: {cfg.transforms.keys()}'
     else:
