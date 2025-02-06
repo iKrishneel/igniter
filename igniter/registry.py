@@ -56,7 +56,7 @@ class Registry(object):
         return self[name] if name in self else None
 
     def remove(self, name: str) -> Any:
-        logger.warning(f'⚠️  Removing {name}')        
+        logger.warning(f'⚠️  Removing {name}')
         return self.__REGISTRY.pop(name, None)
 
     def deregister(self, name: str) -> Any:

@@ -75,7 +75,7 @@ def build_transforms(cfg: DictConfig, name: Optional[str] = None) -> Union[List[
         except AttributeError:
             compose = module.Compose
 
-        transform_list = []        
+        transform_list = []
         for obj, kwargs in attrs.items():
             if 'compose' in obj.lower() and kwargs is not None:
                 compose = transform_registry.get(kwargs) or compose
@@ -121,7 +121,8 @@ def build_model(name: str, cfg: DictConfig) -> nn.Module:
     cls_or_func = model_registry[name]
     attrs = cfg.models[name] or {}
     dtype = getattr(torch, cfg.get('dtype', 'float32'))
-    return cls_or_func(**attrs).to(dtype)
+    model = cls_or_func(**attrs)
+    return model.to(dtype) if hasattr(cls_or_func, 'to') else model
 
 
 @configurable
@@ -357,9 +358,9 @@ def build_engine(model_name, cfg: DictConfig) -> Callable:
             key = next(iter(engine_name))
             engine_kwargs = engine_name[key]
             engine_name = key
-        
+
         logger.info(f'>>> Inference engine: {engine_name}')
-        
+
         build_kwargs, key = cfg.build[model_name], 'transforms'
         transforms = build_transforms(cfg, build_kwargs[mode].get(key) or build_kwargs.get(key) or mode)
         engine = engine_registry[engine_name](cfg, model, transforms=transforms, **engine_kwargs)

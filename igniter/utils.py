@@ -98,6 +98,9 @@ def get_config(filename: str) -> Union[DictConfig, ListConfig]:
 def loggable_model_info(model: torch.nn.Module) -> str:
     from tabulate import tabulate
 
+    if not isinstance(model, torch.nn.Module):
+        return 'Not a torch model'
+
     total_params, trainable_params = 0, 0
     for param in model.parameters():
         total_params += param.shape.numel()

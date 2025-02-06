@@ -27,6 +27,7 @@ install_requires = [
     'argcomplete',
     'safetensors',
     'requests',
+    'pycocotools',
 ]
 
 
