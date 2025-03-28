@@ -182,7 +182,7 @@ def load_weights_from_file(path: str) -> Dict[str, torch.Tensor]:
                 weights[key] = f.get_tensor(key)
         assert len(weights) > 0, f'No weights loaded from {path}'
     else:
-        weights = torch.load(path, map_location='cpu')
+        weights = torch.load(path, map_location='cpu', weights_only=False)
     return weights
 
 
