@@ -4,7 +4,7 @@ import os
 import os.path as osp
 from dataclasses import dataclass
 from io import BytesIO
-from typing import Any, Dict, Union
+from typing import Any, Callable, Dict, Union
 
 import torch
 from omegaconf import DictConfig
@@ -16,7 +16,7 @@ from .s3_client import S3Client
 
 @io_registry('s3_writer')
 class S3IO(S3Client):
-    def __init__(self, bucket_name, root, **kwargs):
+    def __init__(self, bucket_name, root, save_func: Callable = torch.save, **kwargs):
         assert len(root) > 0, 'Invalid root'
         self.cfg = kwargs.pop('cfg', None)
         super(S3IO, self).__init__(bucket_name, **kwargs)
@@ -25,6 +25,9 @@ class S3IO(S3Client):
 
         extension = kwargs.pop('extension', 'pt')
         self.extension = '.' + extension if '.' not in extension else extension
+
+        assert callable(save_func)
+        self.save_fn = save_func
 
     @classmethod
     def build(cls, io_cfg: DictConfig, cfg: DictConfig):
@@ -41,7 +44,7 @@ class S3IO(S3Client):
 
     def _save_tensors(self, data: Union[Dict[str, Any], torch.Tensor], filename: str):
         buffer = BytesIO()
-        torch.save(data, buffer)
+        self.save_fn(data, buffer)
         path = osp.join(self.root, filename)
         self.write(buffer, path, False)
 

@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 
+import os
 import os.path as osp
 import re
 from enum import Enum
 from typing import Tuple, Union
 
+import requests
 import torch
 from omegaconf import DictConfig, ListConfig, OmegaConf
 
@@ -136,8 +138,6 @@ def find_replace_pattern(text: str, replacement: str, pattern: str):
 
 
 def resolve_env_vars(string: str, pattern: str = r'\$(\w+)|\$\{(\w+)\}') -> str:
-    import os
-
     if '$' not in string:
         return string
 
@@ -150,3 +150,20 @@ def resolve_env_vars(string: str, pattern: str = r'\$(\w+)|\$\{(\w+)\}') -> str:
 
     resolved_string = re.sub(pattern, env_var_replacer, string)
     return osp.normpath(resolved_string)
+
+
+def download_https_file(url: str, save_dir: str = '/tmp/', chunk_size: int = 8192) -> str:
+    if not url.startswith('https://'):
+        return url
+
+    local_filename = os.path.join(save_dir, url.split('/')[-1])
+    logger.debug(f'Downloading {url} to {local_filename}')
+
+    response = requests.get(url, stream=True)
+    response.raise_for_status()
+
+    with open(local_filename, 'wb') as f:
+        for chunk in response.iter_content(chunk_size=chunk_size):
+            f.write(chunk)
+    
+    return local_filename
