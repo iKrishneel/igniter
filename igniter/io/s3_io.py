@@ -10,7 +10,7 @@ import torch
 from omegaconf import DictConfig
 
 from .. import utils
-from ..registry import io_registry
+from ..registry import io_registry, event_registry
 from .s3_client import S3Client
 
 
@@ -80,3 +80,16 @@ class FileIO(object):
 
     def _save_tensors(self, data: Union[Dict[str, Any], torch.Tensor], filename: str):
         torch.save(data, filename)
+
+
+@event_registry('checkpoint')
+def file_writer(engine: Any, root: str, prefix: str = 'model_', extension: str = 'pt', unique_dir: bool = True):
+    from datetime import datetime
+
+    if unique_dir:
+        folder_name = datetime.now().strftime("%Y%m%d")
+        root = os.path.join(root, folder_name)
+
+    writer = io_registry['file_writer'](root=root, extension=extension)
+    filename = f'{prefix}{str(engine.state.epoch).zfill(6)}.{extension}'
+    writer(engine._model.state_dict(), filename)

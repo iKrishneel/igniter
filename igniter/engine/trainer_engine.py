@@ -92,7 +92,7 @@ class TrainerEngine(Engine):
         self.add_event_handler(scheduler_event, self.scheduler)
         self.add_event_handler(Events.ITERATION_COMPLETED, self.summary)
 
-        self.checkpoint_handler()
+        # self.checkpoint_handler()
         self.add_persistent_logger()
 
         OmegaConf.save(cfg, os.path.join(self.log_dir, 'config.yaml'))
