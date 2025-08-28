@@ -46,25 +46,22 @@ class S3CocoDataset(S3Dataset):
         self.coco = COCO(self.client, anno_fn)
         self.ids = list(sorted(self.coco.imgs.keys()))
         self.transforms = transforms
-        self.apply_transforms = True
-
-        # TODO: Add target transforms
-        if transforms:
-            import warnings
-
-            warnings.warn('Target transforms is not yet implemented')
+        self.apply_transforms = kwargs.get('apply_transforms', True)
 
     def __getitem__(self, index: int) -> Tuple[Any, ...]:
         while True:
             try:
                 iid = self.ids[index]
                 image, target = self._load(iid)
-                if self.transforms and self.apply_transforms:
-                    image = self.transforms(image)
-                return image, target
+                break
             except Exception as e:
                 logger.warning(f'{e} for iid: {iid}')
                 index = np.random.choice(np.arange(len(self.ids)))
+
+        if self.transforms and self.apply_transforms:
+            image, Target = self.transforms(image, target)
+
+        return image, target
 
     def _load(self, iid: int) -> Tuple[Any, ...]:
         file_name = osp.join(self.root, self.coco.loadImgs(iid)[0]['file_name'])
