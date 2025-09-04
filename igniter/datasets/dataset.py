@@ -12,8 +12,6 @@ def apply_transforms(func: Callable):
         output = func(self, index)
         output = self._transforms(output)
 
-        import IPython; IPython.embed()
-
         return output
     return wrapper
 

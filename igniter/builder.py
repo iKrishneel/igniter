@@ -67,13 +67,9 @@ def build_transforms(cfg: DictConfig, name: Optional[str] = None) -> Union[List[
         if name and key != name or attrs is None:
             continue
 
-        engine = attrs.pop('engine', 'torchvision.transforms')
+        engine = attrs.pop('engine', 'torchvision.transforms.v2')
         module = importlib.import_module(engine)
-
-        try:
-            compose = module.v2.Compose
-        except AttributeError:
-            compose = module.Compose
+        compose = module.Compose
 
         transform_list = []
         for obj, kwargs in attrs.items():
@@ -106,7 +102,9 @@ def build_dataloader(model_name: str, cfg: DictConfig, mode: str) -> DataLoader:
         logger.warning('No transforms for Dataloader')
         transforms = None
 
-    dl_kwargs = dict(cfg.datasets.dataloader)
+    # dl_kwargs = dict(cfg.datasets.dataloader)
+    # dl_kwargs['batch_size'] = int(dl_kwargs.get('batch_size', 1))
+    dl_kwargs = dict(cfg.datasets.dataloader) | {'batch_size': int(cfg.datasets.dataloader.get('batch_size', 1))}
 
     collate_fn = build_func(dl_kwargs.pop('collate_fn', 'collate_fn'))
     attrs = cfg.datasets[ds_name].get(mode, None)
@@ -279,7 +277,7 @@ def validate_config(cfg: DictConfig):
             for key in trans_attrs:
                 if 'engine' in key:
                     continue
-                cfg.transforms[key].engine = 'torchvision.transforms'
+                cfg.transforms[key].engine = 'torchvision.transforms.v2'
 
     return cfg
 
