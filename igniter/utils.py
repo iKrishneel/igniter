@@ -165,5 +165,5 @@ def download_https_file(url: str, save_dir: str = '/tmp/', chunk_size: int = 819
     with open(local_filename, 'wb') as f:
         for chunk in response.iter_content(chunk_size=chunk_size):
             f.write(chunk)
-    
+
     return local_filename
