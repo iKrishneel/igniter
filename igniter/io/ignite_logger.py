@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from typing import Any, Dict
+from typing import Any
 
 from omegaconf import DictConfig
 

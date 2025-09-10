@@ -3,8 +3,8 @@
 import os.path as osp
 
 import pytest
-from torchvision.transforms.v2 import Compose, ToTensor, Normalize, Resize
 from omegaconf import OmegaConf
+from torchvision.transforms.v2 import Compose, Normalize, Resize, ToTensor
 
 from igniter.builder import build_transforms
 
