@@ -59,7 +59,7 @@ class S3CocoDataset(S3Dataset):
             except Exception as e:
                 logger.warning(f'{e} for iid: {iid}')
                 index = np.random.choice(np.arange(len(self.ids)))
-                
+
         if self.transforms is not None and self.apply_transforms:
             image, target = self.transforms(image, target)
 
@@ -101,9 +101,9 @@ class S3CocoDatasetV2(S3CocoDataset):
                 mask = decode_coco_mask(target['segmentation'], *im_hw)
             except TypeError:
                 breakpoint()
-            
+
             category_name = self.coco.cats[target['category_id']]['name']
-            
+
             bboxes.append(target['bbox'])
             masks.append(mask)
             category_names.append(category_name)
@@ -121,9 +121,9 @@ class S3CocoDatasetV2(S3CocoDataset):
         }
         return image, annotations
 
-    
+
 def decode_coco_mask(segmentation: Union[List, Dict], height: int = None, width: int = None):
-    from pycocotools import mask as mask_utils    
+    from pycocotools import mask as mask_utils
 
     if isinstance(segmentation, list):
         rles = mask_utils.frPyObjects(segmentation, height, width)
@@ -137,5 +137,5 @@ def decode_coco_mask(segmentation: Union[List, Dict], height: int = None, width:
             mask = mask_utils.decode(segmentation)
     else:
         raise TypeError(f'Unknown segmentation format: {type(segmentation)}')
-    
+
     return mask.astype(np.uint8)
