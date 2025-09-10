@@ -1,6 +1,6 @@
 transforms:
   train:
-    engine: "torchvision.transforms"
+    engine: "torchvision.transforms.v2"
     ToTensor:
     Normalize:
       mean: [0.485, 0.456, 0.406]
@@ -13,7 +13,7 @@ transforms:
     PadToSize:
       size: 1024
   test:
-    engine: "torchvision.transforms"
+    engine: "torchvision.transforms.v2"
     ResizeLongestSide:
       size: 1024
     ToTensor:
