@@ -119,7 +119,8 @@ def test_run(args: Namespace) -> None:
 
     with open_dict(cfg):
         cfg.build.mode = 'inference'
-        cfg.build[model_name].weights = args.weights or cfg.build[model_name].weights
+        if hasattr(cfg.build, 'weights'):
+            cfg.build[model_name].weights = args.weights or cfg.build[model_name].weights
 
     load_modules(cfg)
     engine = build_engine(cfg)
