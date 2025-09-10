@@ -10,7 +10,7 @@ import torch
 from omegaconf import DictConfig
 
 from .. import utils
-from ..registry import io_registry, event_registry
+from ..registry import event_registry, io_registry
 from .s3_client import S3Client
 
 

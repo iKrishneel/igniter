@@ -16,7 +16,7 @@ def checkpoint_handler(engine, root: str, prefix: str = 'model_', extension: str
     if writer_name is None:
         writer_name = 'file_writer'
         args = dict(root=root, extension=extension)
-    
+
     writer = io_registry[writer_name](**args)
     assert callable(writer)
 

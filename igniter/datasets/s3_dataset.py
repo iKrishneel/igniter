@@ -6,7 +6,6 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 import numpy as np
 from PIL import Image
-import torch
 from torch.utils.data import Dataset
 
 from ..io.s3_client import S3Client
@@ -77,7 +76,6 @@ class S3CocoDataset(S3Dataset):
 
 
 class S3CocoDatasetV2(S3CocoDataset):
-
     def __getitem__(self, index: int) -> Tuple[Any, ...]:
         self.apply_transforms = False
         image, targets = super(S3CocoDatasetV2, self).__getitem__(index)
@@ -117,7 +115,7 @@ class S3CocoDatasetV2(S3CocoDataset):
             'masks': masks,
             'category_names': category_names,
             'category_ids': [target['category_id'] for target in targets],
-            'ids': [target['id'] for target in targets]
+            'ids': [target['id'] for target in targets],
         }
         return image, annotations
 
