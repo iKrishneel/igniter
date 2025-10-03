@@ -179,11 +179,24 @@ def build_event_handlers(model_name: str, cfg: DictConfig, engine: Engine) -> No
     _cfg = cfg.build[model_name]
     attribut_name = 'event_handlers'
 
+    def _add_event(event_type: Union[Events, str], func: Any, **kwargs) -> None:
+        if isinstance(event_type, str):
+            event_type = getattr(Events, event_type)
+        engine.add_event_handler(event_type, func, **kwargs)
+
     def _build(events: List[Dict[str, str]]) -> None:
         for func_name in events:
             event_args = dict(events[func_name] or {})
             event_type = event_args.pop('event_type')
-            engine.add_event_handler(event_type, event_registry[func_name], **event_args)
+            assert event_type is not None, 'event_type cannot be None'
+
+            add_event = functools.partial(_add_event, func=event_registry[func_name], **event_args)
+            if isinstance(event_type, DictConfig):
+                for key, value in event_type.items():
+                    etype = getattr(Events, key)(**event_type[key])
+                    add_event(etype)
+            else:
+                add_event(event_type)
 
     mode = cfg.build.get('mode', None)
     modes = [mode] if mode else MODES
