@@ -6,7 +6,6 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 import numpy as np
 from PIL import Image
-import torch
 from torch.utils.data import Dataset
 
 from ..io.s3_client import S3Client
@@ -77,7 +76,6 @@ class S3CocoDataset(S3Dataset):
 
 
 class S3CocoDatasetV2(S3CocoDataset):
-
     def __getitem__(self, index: int) -> Tuple[Any, ...]:
         self.apply_transforms = False
         image, targets = super(S3CocoDatasetV2, self).__getitem__(index)
@@ -96,12 +94,7 @@ class S3CocoDatasetV2(S3CocoDataset):
         bboxes, masks, category_names, category_ids = [], [], [], []
 
         for target in targets:
-            # mask_rles = mask_utils.frPyObjects(target['segmentation'], *im_hw)
-            try:
-                mask = decode_coco_mask(target['segmentation'], *im_hw)
-            except TypeError:
-                breakpoint()
-
+            mask = decode_coco_mask(target['segmentation'], *im_hw)
             category_name = self.coco.cats[target['category_id']]['name']
 
             bboxes.append(target['bbox'])
@@ -109,15 +102,15 @@ class S3CocoDatasetV2(S3CocoDataset):
             category_names.append(category_name)
             category_ids.append(target['category_id'])
 
-        bboxes = BoundingBoxes(bboxes, format='XYWH', canvas_size=im_hw)
-        masks = Mask(masks, requires_grad=False)
+        bboxes = BoundingBoxes(np.array(bboxes), format='XYWH', canvas_size=im_hw)
+        masks = Mask(np.array(masks), requires_grad=False)
 
         annotations = {
             'bboxes': bboxes,
             'masks': masks,
             'category_names': category_names,
             'category_ids': [target['category_id'] for target in targets],
-            'ids': [target['id'] for target in targets]
+            'ids': [target['id'] for target in targets],
         }
         return image, annotations
 
