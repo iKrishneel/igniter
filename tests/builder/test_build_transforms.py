@@ -3,8 +3,8 @@
 import os.path as osp
 
 import pytest
-import torchvision.transforms as TF
 from omegaconf import OmegaConf
+from torchvision.transforms.v2 import Compose, Normalize, Resize, ToTensor
 
 from igniter.builder import build_transforms
 
@@ -19,17 +19,17 @@ def cfg():
 def test_build_transforms_only_torchvision(cfg):
     transforms = build_transforms(cfg, 'train')
 
-    assert isinstance(transforms, TF.Compose)
+    assert isinstance(transforms, Compose)
     assert len(transforms.transforms) == 3
 
-    target_transforms = [TF.ToTensor, TF.Normalize, TF.Resize]
+    target_transforms = [ToTensor, Normalize, Resize]
     for transform1, transform2 in zip(transforms.transforms, target_transforms):
         assert isinstance(transform1, transform2)
 
 
 def test_build_transforms_only_registry(cfg):
     transforms = build_transforms(cfg, 'val')
-    assert isinstance(transforms, TF.Compose)
+    assert isinstance(transforms, Compose)
     assert len(transforms.transforms) == 2
 
     target_transforms = ['ResizeLongestSide', 'PadToSize']
@@ -39,7 +39,7 @@ def test_build_transforms_only_registry(cfg):
 
 def test_build_transforms_both(cfg):
     transforms = build_transforms(cfg, 'test')
-    assert isinstance(transforms, TF.Compose)
+    assert isinstance(transforms, Compose)
     assert len(transforms.transforms) == 5
 
 
@@ -50,7 +50,7 @@ def test_build_transforms_all(cfg):
     for key, size in zip(['train', 'val', 'test'], [3, 2, 5]):
         transform = build_transforms(cfg, name=key)
 
-        assert isinstance(transform, TF.Compose)
+        assert isinstance(transform, Compose)
         assert len(transform.transforms) == size
 
 

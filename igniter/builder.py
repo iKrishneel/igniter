@@ -134,6 +134,7 @@ def build_optim(model_name: str, cfg: DictConfig, model: nn.Module):
             for n in names:
                 has |= n in name
             return has
+
         return [param for name, param in model.named_parameters() if not has_name(name, names) and param.requires_grad]
 
     def legacy(cfg, name):
@@ -215,6 +216,7 @@ def build_io(cfg: DictConfig) -> Union[Dict[str, Callable], None]:
             return cls.build(io_cfg, cfg)
         except AttributeError:
             return cls(io_cfg, cfg)
+
     return {key: _build(cfg.io[key]) for key in cfg.io}
 
 

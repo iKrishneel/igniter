@@ -132,7 +132,7 @@ class TrainerEngine(Engine):
             default_path = f'./logs/{self._cfg.build.model}/models/{get_datetime()}'
             logger.info(f'No checkpoint handler! Using default and saving {default_path}')
 
-            _checkpointer = Checkpoint(
+            _checkpointer = Checkpoint(  # NOQA: F811
                 {'model': self._model},
                 default_path,
                 n_saved=2,

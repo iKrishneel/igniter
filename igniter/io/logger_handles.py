@@ -5,8 +5,9 @@ from typing import Any, Optional
 
 import torch
 from ignite.engine import Engine
-from ignite.handlers.fbresearch_logger import MB
 from ignite.handlers.fbresearch_logger import FBResearchLogger as _FBResearchLogger
+
+# from ignite.handlers.fbresearch_logger import MB
 
 
 class FBResearchLogger(_FBResearchLogger):
