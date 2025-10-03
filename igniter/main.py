@@ -72,7 +72,7 @@ def _to_absolute_path(cfg: DictConfig, config_dir: str) -> DictConfig:
         return
 
     for key in cfg:
-        if isinstance(cfg[key], str) and not os.path.isabs(cfg[key]):
+        if isinstance(cfg[key], str) and not os.path.isabs(cfg[key]) and not len(cfg[key]) == 0:
             path = os.path.normpath(os.path.join(config_dir, cfg[key]))
             if os.path.isfile(path) or os.path.isdir(path):
                 cfg[key] = path
