@@ -3,8 +3,9 @@
 import os
 import os.path as osp
 import time
-from dataclasses import dataclass, field
+from dataclasses import InitVar, dataclass, field
 from functools import partial
+from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Union
 
 import cv2 as cv
@@ -27,7 +28,7 @@ def build_hook(name: str, **kwargs: Dict[str, Any]) -> Callable:
 
 @dataclass
 class Inference(object):
-    filename: str
+    filename: InitVar[str]
     engine: InferenceEngine
     threshold: Optional[float] = 0.0
     input_fmt: Optional[str] = 'RGB'
@@ -36,20 +37,25 @@ class Inference(object):
     _pre_hooks: List[Callable] = field(default_factory=lambda: [])
     _post_hooks: List[Callable] = field(default_factory=lambda: [])
 
-    def __post_init__(self) -> None:
-        assert osp.isfile(self.filename), f'Invalid path: {self.filename}!'
-
-        supported_exts, ext = IMAGE_EXTS + VIDEO_EXTS, osp.splitext(self.filename)[1]
-        assert ext.lower() in supported_exts, f'Invalid file {self.filename}. Supported file types are {supported_exts}'
-        assert self.input_fmt.upper() in ['RGB', 'BGR', 'GRAY', 'MONO'], f'Invalid input format {self.input_fmt}'
+    def __post_init__(self, filename: str) -> None:
+        # assert osp.isfile(filename) or osp.isdir(filename), f'Invalid path: {filename}!'
+        if osp.isfile(filename):
+            supported_exts, ext = IMAGE_EXTS + VIDEO_EXTS, osp.splitext(filename)[1]
+            assert ext.lower() in supported_exts, f'Invalid file {filename}. Supported file types are {supported_exts}'
+            assert self.input_fmt.upper() in ['RGB', 'BGR', 'GRAY', 'MONO'], f'Invalid input format {self.input_fmt}'
+            self._loader = partial(self.load_image if ext in IMAGE_EXTS else self.load_video, filename=filename)
+            # self._ext = ext
+        elif osp.isdir(filename):
+            filenames = [f for f in Path(filename).iterdir() if f.suffix.lower() in IMAGE_EXTS]
+            self._loader = partial(self.load_images, filenames=filenames)
+        else:
+            raise TypeError(f'Invalid path: {filename}')
 
         if self.save:
             assert osp.isdir(self.save_dir), f'{self.save_dir} is not a directory'
             os.makedirs(self.save_dir, exist_ok=True)
 
         assert self.engine is not None
-        self._ext = ext
-        self._loader = self.load_image if ext in IMAGE_EXTS else self.load_video
 
     def __call__(self) -> None:
         self._loader()
@@ -57,14 +63,14 @@ class Inference(object):
     def run(self) -> None:
         self()
 
-    def load_image(self) -> None:
-        image = Image.open(self.filename).convert(self.input_fmt)
-        self.process(image, filename=self.filename)
+    def load_image(self, filename: str) -> None:
+        image = Image.open(filename).convert(self.input_fmt)
+        self.process(image, filename=filename)
 
-    def load_video(self) -> None:
-        logger.info(f'Loading video from: {self.filename}')
+    def load_video(self, filename: str) -> None:
+        logger.info(f'Loading video from: {filename}')
         start_time = time.time()
-        cap = cv.VideoCapture(self.filename)
+        cap = cv.VideoCapture(filename)
         counter = 1
         while cap.isOpened():
             ret, frame = cap.read()
@@ -75,6 +81,10 @@ class Inference(object):
         cap.release()
         logger.info(f'Total Processing time: {time.time() - start_time}')
         logger.info('Completed!')
+
+    def load_images(self, filenames: List[str]):
+        for filename in filenames:
+            self.load_image(filename)
 
     def process(self, image: Union[Image.Image, np.ndarray], filename: str = None) -> Any:
         image = np.asarray(image) if not isinstance(image, np.ndarray) else image
