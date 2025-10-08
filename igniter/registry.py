@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from tabulate import tabulate
 
@@ -69,6 +69,9 @@ class Registry(object):
 
         logger.warning(f'⚠️  Clearning {self.name}')
         self.__REGISTRY.clear()
+
+    def keys(self) -> List[str]:
+        return self.__REGISTRY.keys()
 
     def __repr__(self):
         title = f'Registry for {self.name}\n'
