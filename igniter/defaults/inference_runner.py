@@ -15,19 +15,20 @@ from PIL import Image
 
 from igniter.engine import InferenceEngine
 from igniter.logger import logger
-from igniter.registry import func_registry
+from igniter.registry import runner_registry
 
 IMAGE_EXTS: List[str] = ['.jpg', '.png', '.jpeg']
 VIDEO_EXTS: List[str] = ['.avi', '.mp4', '.mov']
 INPUT_FMTS: List[str] = ['RGB', 'BGR', 'GRAY', 'MONO']
 
 
-def build_hook(name: str, **kwargs: Dict[str, Any]) -> Callable:
-    return partial(func_registry[name], **kwargs)
+# def build_hook(name: str, **kwargs: Dict[str, Any]) -> Callable:
+#     return partial(func_registry[name], **kwargs)
 
 
+@runner_registry('default_runner')
 @dataclass
-class Inference(object):
+class InferenceRunner(object):
     filename: InitVar[str]
     engine: InferenceEngine
     threshold: Optional[float] = 0.0

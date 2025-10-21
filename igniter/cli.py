@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
+import functools
 import importlib
 import logging
 import os
@@ -103,7 +104,12 @@ def train_val_run(args: Namespace, is_train: bool) -> None:
 
 
 def test_run(args: Namespace) -> None:
-    from igniter.defaults.inference_runner import Inference, build_hook
+    from igniter.registry import func_registry, runner_registry
+
+    # from igniter.defaults.inference_runner import InferenceRunner as Inference, build_hook
+
+    def build_hook(name: str, **kwargs: Dict[str, Any]) -> Callable:
+        return functools.partial(func_registry[name], **kwargs)
 
     def setup_hooks(hooks: Dict[str, Any], set_func: Callable) -> None:
         assert callable(set_func)
@@ -125,9 +131,22 @@ def test_run(args: Namespace) -> None:
     load_modules(cfg)
     engine = build_engine(cfg)
 
-    inference = Inference(args.input, engine, input_fmt=args.format, save=args.save, save_dir=args.save_dir)
+    config = cfg.build[model_name]
+    assert 'inference' in config, 'Inference attributes are required to run inference'
 
-    pre_hooks, post_hooks = [cfg.build[model_name].inference.get(name) for name in ['pre_hooks', 'post_hooks']]
+    if 'runner' not in config.inference:
+        # backward compatability
+        runner_name = 'default_runner'
+        hook_lup = config.inference
+    else:
+        runner_name = getattr(config.inference.runner, 'name', 'default_runner')
+        # TODO: handle non string name - bind
+        hook_lup = config.inference.runner
+
+    runner = runner_registry[runner_name]
+    inference = runner(args.input, engine, input_fmt=args.format, save=args.save, save_dir=args.save_dir)
+
+    pre_hooks, post_hooks = [hook_lup.get(name) for name in ['pre_hooks', 'post_hooks']]
     setup_hooks(pre_hooks, inference.register_forward_pre_hook)
     setup_hooks(post_hooks, inference.register_forward_post_hook)
 
