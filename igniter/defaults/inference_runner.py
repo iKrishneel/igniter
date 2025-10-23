@@ -70,7 +70,7 @@ class InferenceRunner(object):
 
     def load_video(self, filename: str) -> None:
         logger.info(f'Loading video from: {filename}')
-        start_time = time.time()
+        start_time = time.perf_counter()
         cap = cv.VideoCapture(filename)
         counter = 1
         while cap.isOpened():
@@ -80,24 +80,26 @@ class InferenceRunner(object):
             self.process(frame, str(counter))
             counter += 1
         cap.release()
-        logger.info(f'Total Processing time: {time.time() - start_time}')
+        logger.info(f'Total Processing time: {time.perf_counter() - start_time}')
         logger.info('Completed!')
 
     def load_images(self, filenames: List[str]):
         for filename in filenames:
             self.load_image(filename)
 
-    def process(self, image: Union[Image.Image, np.ndarray], filename: str = None) -> Any:
+    def process(
+        self, image: Union[Image.Image, np.ndarray], filename: str = None, engine_kwargs: Dict[str, Any] = None
+    ) -> Any:
         image = np.asarray(image) if not isinstance(image, np.ndarray) else image
-        start_time = time.time()
-        pred = self._process(image, filename)
-        logger.info(f'Inference time: {time.time() - start_time}')
+        start_time = time.perf_counter()
+        pred = self._process(image, filename, engine_kwargs)
+        logger.info(f'Inference time: {time.perf_counter() - start_time}')
         return pred
 
     @torch.inference_mode()
-    def _process(self, image: Image, filename: str = None) -> Any:
+    def _process(self, image: Image, filename: str = None, engine_kwargs: Dict[str, Any] = None) -> Any:
         image = self._run_hooks(image, self._pre_hooks)
-        pred = self.engine(image)
+        pred = self.engine(image, **(engine_kwargs or {}))
         # TODO(iKrishneel): make this into a collate function
         data = {'image': image, 'pred': pred, 'filename': filename}
         pred = self._run_hooks(data, self._post_hooks)
@@ -111,9 +113,19 @@ class InferenceRunner(object):
         assert callable(func)
         self._post_hooks.append(func)
 
-    @staticmethod
-    def _run_hooks(data: Dict[str, Any], hooks) -> Any:
+    def _run_hooks(self, data: Dict[str, Any], hooks) -> Any:
+        import warnings
+
         for hook in hooks:
-            _ = hook(data)
+            try:
+                _ = hook(self.engine, data)
+            except TypeError:
+                warnings.warn(
+                    'From igniter v1.0.15, pre/post hooks will have `engine` passed as '
+                    'the default first parameter. Please update your hook signature.',
+                    FutureWarning,
+                    stacklevel=2,
+                )
+                _ = hook(data)  # backward compatibility
             data = _ or data
         return data
