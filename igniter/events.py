@@ -21,7 +21,7 @@ def checkpoint_handler(
         parsed = urlparse(root)
         args = dict(bucket_name=parsed.netloc, root=parsed.path.lstrip('/'))
 
-    if writer_name is None:
+    if writer_name is None or writer_name == 'file_writer':
         writer_name = 'file_writer'
         args = dict(root=root, extension=extension)
 
