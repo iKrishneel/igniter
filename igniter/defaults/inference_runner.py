@@ -47,7 +47,7 @@ class InferenceRunner(object):
             self._loader = partial(self.load_image if ext in IMAGE_EXTS else self.load_video, filename=filename)
             # self._ext = ext
         elif osp.isdir(filename):
-            filenames = [f for f in Path(filename).iterdir() if f.suffix.lower() in IMAGE_EXTS]
+            filenames = [f for f in Path(filename).iterdir() if f.suffix.lower() in IMAGE_EXTS].sort()
             self._loader = partial(self.load_images, filenames=filenames)
         else:
             raise TypeError(f'Invalid path: {filename}')

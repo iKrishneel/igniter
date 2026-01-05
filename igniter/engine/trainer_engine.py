@@ -3,7 +3,7 @@
 import importlib
 import os
 from datetime import datetime
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import ignite.distributed as idist
 import torch
@@ -147,23 +147,27 @@ class TrainerEngine(Engine):
         lr = self._optimizer.param_groups[0]['lr']
         return lr[0] if isinstance(lr, list) else lr
 
-    def get_state_dict(self) -> Dict[str, Any]:
-        state_dict = {
-            'model': self._model.state_dict(),
-            'cfg': self._cfg,
-            'optimizer': self._optimizer.state_dict(),
-            'scheduler': self._scheduler.state_dict() if self._scheduler is not None else None,
-            'state': self.state,
-        }
+    def get_state_dict(self, keys: List[str] = 'all') -> Dict[str, Any]:
+        all_keys = ['model', 'cfg', 'optimizer', 'scheduler', 'state']
 
-        save_options = self._cfg.io.checkpoint.get('save', 'all') if hasattr(self._cfg.io, 'checkpoint') else 'state'
-        if save_options == 'all':
-            return state_dict
+        keys = all_keys if isinstance(keys, str) and keys.lower() == 'all' else keys
+        keys = [keys] if isinstance(keys, str) else keys
+        keys = ['model', 'cfg'] if len(keys) == 0 or 'model' not in keys else keys
 
-        for key in ['optimizer', 'scheduler', 'state']:
-            if key in save_options:
-                continue
-            state_dict.pop(key)
+        state_dict = {key.lower(): None for key in keys}
+        for key in state_dict:
+            if key == 'model':
+                value = self._model.state_dict()
+            elif key == 'optimizer':
+                value = self._optimizer.state_dict()
+            elif key == 'scheduler':
+                value = self._scheduler.state_dict() if self._scheduler is not None else None
+            elif key == 'state':
+                value = self.state
+            elif key == 'cfg':
+                value = self._cfg
+
+            state_dict[key] = value
 
         return state_dict
 
