@@ -3,6 +3,7 @@
 from typing import List
 from urllib.parse import urlparse
 
+from igniter.logger import logger
 from igniter.registry import event_registry, io_registry
 
 
@@ -30,4 +31,8 @@ def checkpoint_handler(
 
     extension = extension.replace('.', '')
     filename = f'{prefix}{str(engine.state.epoch).zfill(7)}.{extension}'
-    writer(engine.get_state_dict(keys=keys), filename)
+    try:
+        writer(engine.get_state_dict(keys=keys), filename)
+    except Exception as e:
+        logger.warn(f'Failed to write state due to {e}\nBackup on the local disk')
+        io_registry['checkpoint'](engine=engine, root='./', unique_dir=True)
