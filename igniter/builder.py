@@ -50,6 +50,15 @@ def configurable(func: Callable):
     return wrapper
 
 
+def load_module(func: Callable):
+    @functools.wraps(func)
+    def wrapper(cfg: DictConfig, *args, **kwargs):
+        importlib.import_module(cfg.driver)
+        return func(cfg, *args, **kwargs)
+
+    return wrapper
+
+
 def build_transforms(cfg: DictConfig, name: Optional[str] = None) -> Union[List[Any], Dict[str, List[Any]]]:
     if not cfg.get('transforms', None):
         return
@@ -297,6 +306,7 @@ def validate_config(cfg: DictConfig):
     return cfg
 
 
+@load_module
 @configurable
 def build_engine(model_name, cfg: DictConfig) -> Callable:
     mode = cfg.build.get('mode', 'train')
