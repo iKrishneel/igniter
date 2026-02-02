@@ -135,13 +135,14 @@ def get_s3_etag(s3_path: str) -> str:
 
 
 def is_same_hash(s3_path: str, local_path: str) -> bool:
-    etag = get_s3_etag(s3_path)
+    etag_s3 = get_s3_etag(s3_path)
+    etag_lc = get_file_etag(local_path)
 
-    if '-' in etag:
+    if '-' in etag_s3:
         logger.error('ETag is not a plain MD5 (most probably a multipart upload)')
-        return False
+        return osp.isfile(local_path)
 
-    return get_file_etag(local_path) == etag
+    return etag_lc == etag_s3
 
 
 def load_weights_from_s3(s3_path: str, decoder: Union[Callable[..., Any], str, None] = None) -> Dict[str, Any]:
