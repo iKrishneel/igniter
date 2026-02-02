@@ -357,7 +357,7 @@ def build_engine(model_name, cfg: DictConfig) -> Callable:
             attrs = cfg.build[model_name].get('val', None)
             assert attrs, 'Validation attributes are required when options.eval=True'
             engine_name = attrs.get('engine') or 'default_evaluation'
-            process_func = build_func(attrs.get('func', 'default_evaluation'))
+            process_func = process_func or build_func(attrs.get('func', 'default_evaluation'))
             logger.info(f'>>> Evaluation engine: {engine_name}, {process_func}')
             dataloader = build_dataloader(cfg, 'val')
             engine = engine_registry[engine_name](cfg, process_func, model, dataloader, io_ops)
