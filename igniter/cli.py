@@ -13,7 +13,7 @@ from typing import Any, Callable, Dict, List, Type
 import argcomplete
 from omegaconf import DictConfig, open_dict
 
-from igniter.builder import build_engine
+from igniter.builder import build_engine, build_func
 from igniter.logger import logger
 from igniter.main import _run as igniter_run
 from igniter.main import get_full_config
@@ -143,7 +143,7 @@ def test_run(args: Namespace) -> None:
         # TODO: handle non string name - bind
         hook_lup = config.inference.runner
 
-    runner = runner_registry[runner_name]
+    runner = build_func(runner_name, registry=runner_registry)
     inference = runner(args.input, engine, input_fmt=args.format, save=args.save, save_dir=args.save_dir)
 
     pre_hooks, post_hooks = [hook_lup.get(name) for name in ['pre_hooks', 'post_hooks']]

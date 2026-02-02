@@ -35,6 +35,7 @@ class InferenceRunner(object):
     input_fmt: Optional[str] = 'RGB'
     save: Optional[bool] = False
     save_dir: Optional[str] = None
+    scale: Optional[float] = 1.0
     _pre_hooks: List[Callable] = field(default_factory=lambda: [])
     _post_hooks: List[Callable] = field(default_factory=lambda: [])
 
@@ -57,6 +58,7 @@ class InferenceRunner(object):
             assert osp.isdir(self.save_dir), f'{self.save_dir} is not a directory'
             os.makedirs(self.save_dir, exist_ok=True)
 
+        assert self.scale > 0.0, 'Scale cannot be zero'
         assert self.engine is not None
 
     def __call__(self) -> None:

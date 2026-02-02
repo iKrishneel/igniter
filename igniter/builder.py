@@ -16,6 +16,7 @@ from torch.utils.data import DataLoader
 
 from igniter.logger import logger
 from igniter.registry import (
+    Registry,
     dataset_registry,
     engine_registry,
     event_registry,
@@ -29,14 +30,16 @@ from igniter.utils import is_distributed, loggable_model_info, model_name
 MODES: List[str] = ['train', 'val', 'test', 'inference']
 
 
-def build_func(func_name: Union[str, Dict[str, Any]] = 'default'):
+def build_func(
+    func_name: Union[str, Dict[str, Any]] = 'default', registry: Optional[Registry] = func_registry
+) -> Callable:
     assert isinstance(func_name, (str, dict, DictConfig))
     if isinstance(func_name, (dict, DictConfig)):
         assert len(func_name) == 1, f'Current only supports one key but given {func_name.keys()}'
         for key, value in func_name.items():
-            return functools.partial(func_registry[key], **(value or {}))
-    func = func_registry[func_name]
-    assert func, f'Function {func_name} not found in registry \n{func_registry}'
+            return functools.partial(registry[key], **(value or {}))
+    func = registry[func_name]
+    assert func, f'Function {func_name} not found in registry \n{registry}'
     return func
 
 
