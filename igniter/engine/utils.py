@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 
+import hashlib
 import importlib
 import os
 import os.path as osp
 from collections import OrderedDict
 from typing import Any, Callable, Dict, Tuple, Union
+from urllib.parse import urlparse
 
 import torch
 import torch.nn as nn
@@ -86,22 +88,74 @@ def load_weights(model: nn.Module, cfg: DictConfig, **kwargs):
 def get_path_or_load(filename: str) -> Tuple[str, Dict[str, Any]]:
     root = osp.join(os.environ['HOME'], f'.cache/torch/{filename}') if not osp.isfile(filename) else filename
     if osp.isfile(root):
-        logger.info(f'Cache found in cache, loading from {root}')
+        logger.info(f'Weight file found in cache: {root}')
         return root, load_weights_from_file(root)
 
     os.makedirs(osp.dirname(root), exist_ok=True)
     return root, None
 
 
-def load_weights_from_s3(path: str, decoder: Union[Callable[..., Any], str, None] = None) -> Dict[str, Any]:
-    bucket_name = path[5:].split('/')[0]
-    assert len(bucket_name) > 0, 'Invalid bucket name'
+def same_mtime(s3_path: str, local_path: str) -> bool:
+    from datetime import timezone
+    from urllib.parse import urlparse
 
-    path = path[5 + len(bucket_name) + 1 :]
+    parsed = urlparse(s3_path)
+    if parsed.scheme != 's3':
+        raise ValueError('s3_path must be of form s3://bucket/key')
+
+    bucket = parsed.netloc
+    key = parsed.path.lstrip(os.sep)
+
+    local_mtime = int(osp.getmtime(local_path))
+
+    s3_client = S3Client(bucket_name=bucket)
+    obj = s3_client.head_object(path=key)
+    s3_mtime = int(obj['LastModified'].astimezone(timezone.utc).timestamp())
+
+    return local_mtime == s3_mtime
+
+
+def get_file_etag(path: str) -> str:
+    h = hashlib.md5()
+    with open(path, 'rb') as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def get_s3_etag(s3_path: str) -> str:
+    parsed = urlparse(s3_path)
+    bucket = parsed.netloc
+    key = parsed.path.lstrip(os.sep)
+
+    s3_client = S3Client(bucket_name=bucket)
+    obj = s3_client.head_object(key)
+
+    return obj['ETag'].strip('"')
+
+
+def is_same_hash(s3_path: str, local_path: str) -> bool:
+    etag = get_s3_etag(s3_path)
+
+    if '-' in etag:
+        logger.error('ETag is not a plain MD5 (most probably a multipart upload)')
+        return False
+
+    return get_file_etag(local_path) == etag
+
+
+def load_weights_from_s3(s3_path: str, decoder: Union[Callable[..., Any], str, None] = None) -> Dict[str, Any]:
+    bucket_name = s3_path[5:].split('/')[0]
+    assert len(bucket_name) > 0, f'Invalid bucket name {bucket_name}'
+
+    path = s3_path[5 + len(bucket_name) + 1 :]
     root, weights = get_path_or_load(path)
 
     if weights is not None:
-        return weights
+        if is_same_hash(s3_path, root):
+            logger.info(f'Loading weights from {root}')
+            return weights
+        logger.info('Local and remote file timestamps differ; downloading the file again.')
 
     s3_client = S3Client(bucket_name=bucket_name)
 

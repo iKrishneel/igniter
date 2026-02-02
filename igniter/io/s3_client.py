@@ -94,7 +94,12 @@ class S3Client(object):
         )
 
         logger.info(f'Uploading {filename} to s3://{self.bucket_name}/{object_key}')
-        self.client.upload_file(filename, Bucket=self.bucket_name, Key=object_key)
+        self.client.upload_file(
+            filename,
+            Bucket=self.bucket_name,
+            Key=object_key,
+            ExtraArgs={'Metadata': {'local-mtime': str(int(os.path.getmtime(filename)))}},
+        )
         logger.info('File Uploaded!')
 
     def decode_file(self, s3_file, decoder: Optional[Union[Callable[..., Any], str]] = None) -> Type[Any]:
