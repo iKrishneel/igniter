@@ -8,6 +8,7 @@ import os
 import os.path as osp
 import sys
 from collections import OrderedDict
+from pathlib import Path
 from typing import Any, Callable, Dict, List, Type
 
 import argcomplete
@@ -67,10 +68,16 @@ def import_from_script(script_path: str, module_name: str) -> None:
 
 
 def get_config(args: Namespace) -> DictConfig:
-    config_path = osp.abspath(args.config)
-    assert config_path.split('.')[1] == 'yaml', f'Config must be a yaml file but got {config_path}'
+    config_path = Path(args.config).expanduser().resolve()
+
+    if config_path.suffix.lower() not in {'.yaml', '.yml'}:
+        raise ValueError(f'Config must be a .yaml or .yml file, but got: {config_path}')
+
+    if not config_path.is_file():
+        raise FileNotFoundError(f'Config file does not exist: {config_path}')
+
     logger.info(f'Using config {config_path}')
-    return get_full_config(config_path)
+    return get_full_config(str(config_path))
 
 
 def load_modules(cfg: DictConfig) -> None:
