@@ -56,7 +56,14 @@ def configurable(func: Callable):
 def load_module(func: Callable):
     @functools.wraps(func)
     def wrapper(cfg: DictConfig, *args, **kwargs):
-        importlib.import_module(cfg.driver)
+        from igniter.driver import load_modules
+
+        try:
+            load_modules(cfg)
+        except ValueError:
+            pass
+
+        # importlib.import_module(cfg.driver)
         return func(cfg, *args, **kwargs)
 
     return wrapper

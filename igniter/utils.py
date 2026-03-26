@@ -1,16 +1,21 @@
 #!/usr/bin/env python
 
+import functools
 import os
 import os.path as osp
 import re
+import time
 from enum import Enum
-from typing import Tuple, Union
+from typing import Callable, ParamSpec, Tuple, TypeVar, Union
 
 import requests
 import torch
 from omegaconf import DictConfig, ListConfig, OmegaConf
 
 from .logger import logger
+
+P = ParamSpec('P')
+R = TypeVar('R')
 
 
 class Node(Enum):
@@ -167,3 +172,25 @@ def download_https_file(url: str, save_dir: str = '/tmp/', chunk_size: int = 819
             f.write(chunk)
 
     return local_filename
+
+
+def timer(func: Callable[P, R]) -> Callable[P, R]:
+    @functools.wraps(func)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+
+        start = time.perf_counter()
+
+        result = func(*args, **kwargs)
+
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+
+        end = time.perf_counter()
+
+        logger.info(f'{func.__name__} took {end - start:.4f} seconds')
+
+        return result
+
+    return wrapper
