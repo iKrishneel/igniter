@@ -66,13 +66,16 @@ class InferenceEngine(object):
         self.device = cfg.get('device', 'cuda' if torch.cuda.is_available() else 'cpu')
         logger.info(f'Using device: {self.device}')
 
-        model = build_model(cfg) if model is None else model
-        load_weights(model, cfg, strict=kwargs.get('strict', True))
-        model.to(self.device)
-        model.to(getattr(torch, cfg.dtype))
-        model.eval()
+        self._cfg = cfg
+        self._model = build_model(cfg) if model is None else model
+        # load_weights(model, cfg, strict=kwargs.get('strict', True))
+        self.load_weights()
+        self._model.to(self.device)
+        self._model.to(getattr(torch, cfg.dtype))
+        self._model.eval()
+
         # self._model = torch.compile(model) if hasattr(torch, 'compile') else model
-        self._model = model
+        # self._model = model
 
         logger.info('Inference Engine is Ready!')
 
@@ -88,6 +91,9 @@ class InferenceEngine(object):
 
         image = image[None, :] if len(image.shape) == 3 else image  # type: ignore
         return self.model(image.to(self.device), **kwargs)  # type: ignore
+
+    def load_weights(self, **kwargs: Dict[str, Any]):
+        load_weights(self.model, self._cfg, strict=kwargs.get('strict', True))
 
     @property
     def model(self) -> torch.nn.Module:
