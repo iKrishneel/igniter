@@ -83,6 +83,7 @@ def load_weights(model: nn.Module, cfg: DictConfig, **kwargs):
 
     load_status = model.load_state_dict(wpth, strict=kwargs.get('strict', False))
     logger.info(f'{load_status}')
+    return weight_dict
 
 
 def get_path_or_load(filename: str) -> Tuple[str, Dict[str, Any]]:
