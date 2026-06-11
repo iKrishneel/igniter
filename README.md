@@ -48,6 +48,9 @@ Igniter lets you go from a model definition to a fully working training, evaluat
 Requires **Python ≥ 3.9** and PyTorch.
 
 ```bash
+# using pip
+pip install igniter
+
 # From source
 git clone https://github.com/iKrishneel/igniter.git
 cd igniter
